@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="theme-color" content="#07090f"/>
+<title>ArcheryLog</title>
+<link rel="manifest" href="archery-manifest.json"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow-x:hidden;background:#07090f;color:#f8fafc;font-family:'DM Mono',monospace}
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;700&family=Syne:wght@700;800;900&display=swap');
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+input,button{font-family:inherit}
+input::placeholder{color:#334155}
+input:focus{outline:none}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes popIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+.fade-up{animation:fadeUp .3s ease forwards}
+.pop-in{animation:popIn .2s cubic-bezier(.34,1.56,.64,1) forwards}
+.page{width:100%;max-width:420px;margin:0 auto;padding:0 18px 80px}
+/* Buttons */
+.btn-primary{background:linear-gradient(135deg,#F97316,#DC5A08);color:#fff;border:none;border-radius:13px;font-family:'Syne',sans-serif;font-weight:800;font-size:15px;cursor:pointer;transition:transform .12s,box-shadow .12s;box-shadow:0 4px 18px rgba(249,115,22,.38);padding:14px 0;width:100%}
+.btn-primary:active{transform:scale(.97)}
+.btn-primary:disabled{opacity:.3;pointer-events:none}
+.btn-ghost{background:rgba(255,255,255,.05);color:#94a3b8;border:1px solid rgba(255,255,255,.09);border-radius:11px;font-size:12px;font-weight:500;cursor:pointer;transition:background .15s,color .15s;padding:10px 14px}
+.btn-ghost:active{background:rgba(255,255,255,.12)}
+.btn-danger{background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.28);border-radius:11px;font-size:12px;font-weight:500;cursor:pointer;padding:10px 14px}
+.btn-danger:active{background:rgba(239,68,68,.22)}
+.btn-icon{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);border-radius:10px;color:#f8fafc;font-size:18px;cursor:pointer;width:38px;height:38px;display:flex;align-items:center;justify-content:center}
+/* Cards */
+.card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:14px 16px}
+.lbl{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:5px}
+/* Pill */
+.pill{padding:7px 13px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);color:#94a3b8;font-size:12px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.pill.active{background:#F97316;border:none;color:#fff;font-weight:700}
+/* Stepper */
+.stepper{display:flex;align-items:center;gap:10px}
+.stepper button{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:9px;color:#f8fafc;font-size:18px;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stepper button:active{background:rgba(255,255,255,.15)}
+.stepper .val{font-family:'Syne',sans-serif;font-weight:900;font-size:22px;color:#F97316;min-width:28px;text-align:center}
+/* Popup */
+.popup-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:flex-end;justify-content:center}
+.popup-box{background:#0f172a;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:420px;border-top:1px solid rgba(255,255,255,.1)}
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px 20px;font-size:13px;color:#f8fafc;z-index:200;pointer-events:none;opacity:0;transition:opacity .3s}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// BLOC 0 — UTILS
+// ═══════════════════════════════════════════════════════════════════
+function $(id){return document.getElementById(id)}
+function toNum(s){return s==="X"?10:typeof s==="number"?s:0}
+function normalizeVolley(v){if(!v||v.arrows.length===0)return 0;return(v.score/(v.arrows.length*10))*30}
+
+function showToast(msg,dur=2200){
+  const t=$("toast");t.textContent=msg;t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"),dur);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BLOC 1 — BLASONS OFFICIELS
+// ═══════════════════════════════════════════════════════════════════
+function standardRings(){return[
+  {r:.05,color:"#F5C400",stroke:"#C9A000",score:"X"},
+  {r:.10,color:"#F5C400",stroke:"#C9A000",score:10},
+  {r:.20,color:"#F5C400",stroke:"#C9A000",score:9},
+  {r:.30,color:"#D92B2B",stroke:"#A81E1E",score:8},
+  {r:.40,color:"#D92B2B",stroke:"#A81E1E",score:7},
+  {r:.50,color:"#1E6DB5",stroke:"#145494",score:6},
+  {r:.60,color:"#1E6DB5",stroke:"#145494",score:5},
+  {r:.72,color:"#1A1A1A",stroke:"#111",score:4},
+  {r:.84,color:"#1A1A1A",stroke:"#111",score:3},
+  {r:.92,color:"#F0F0F0",stroke:"#bbb",score:2},
+  {r:1.0,color:"#F0F0F0",stroke:"#bbb",score:1},
+]}
+function trispotRings(){return[
+  {r:.05,color:"#F5C400",stroke:"#C9A000",score:"X"},
+  {r:.10,color:"#F5C400",stroke:"#C9A000",score:10},
+  {r:.20,color:"#F5C400",stroke:"#C9A000",score:9},
+  {r:.30,color:"#D92B2B",stroke:"#A81E1E",score:8},
+  {r:.40,color:"#D92B2B",stroke:"#A81E1E",score:7},
+  {r:.50,color:"#1E6DB5",stroke:"#145494",score:6},
+]}
+const TARGET_RADIUS={"WA 122cm":61,"WA 80cm":40,"WA 60cm":30,"WA 40cm":20,"Trispot":20};
+function getRings(t){return t==="Trispot"?trispotRings():standardRings()}
+function getScore(nx,ny,rings){
+  const d=Math.sqrt(nx*nx+ny*ny);
+  for(const r of(rings||standardRings()))if(d<=r.r)return r.score;
+  return 0;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BLOC 2 — STOCKAGE LOCAL + EXPORT/IMPORT
+// ═══════════════════════════════════════════════════════════════════
+const STORAGE_KEY="archerylog_v3";
+function loadData(){
+  try{const d=localStorage.getItem(STORAGE_KEY);return d?JSON.parse(d):{history:[],pseudo:""}}
+  catch{return{history:[],pseudo:""}}
+}
+function saveData(data){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}
+  catch(e){showToast("Erreur sauvegarde locale")}
+}
+function exportData(data){
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download=`archerylog_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();URL.revokeObjectURL(url);
+  showToast("Export téléchargé ✓");
+}
+function importData(file,onDone){
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const d=JSON.parse(e.target.result);
+      if(!d.history)throw new Error("Format invalide");
+      onDone(d);showToast("Import réussi ✓ — "+d.history.length+" séances");
+    }catch{showToast("Fichier invalide ✗")}
+  };
+  r.readAsText(file);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BLOC 3 — CALCULS STATS
+// ═══════════════════════════════════════════════════════════════════
+function computeStats(volleys,targetName){
+  const allArrows=volleys.flatMap(v=>v.arrows);
+  const n=allArrows.length;
+  if(n===0)return null;
+  const radiusCm=TARGET_RADIUS[targetName]||61;
+  const totalScore=volleys.reduce((s,v)=>s+v.score,0);
+  const avgPerArrow=(totalScore/n).toFixed(2);
+  const dists=allArrows.map(a=>Math.sqrt(a.nx**2+a.ny**2)*radiusCm);
+  const avgDistCm=(dists.reduce((s,d)=>s+d,0)/n).toFixed(1);
+  // biais
+  const bx=allArrows.reduce((s,a)=>s+a.nx,0)/n;
+  const by=allArrows.reduce((s,a)=>s+a.ny,0)/n;
+  const biasCm=(Math.sqrt(bx**2+by**2)*radiusCm).toFixed(1);
+  const biasAngle=Math.atan2(by,bx)*180/Math.PI;
+  // biais X et Y séparément
+  const biasXcm=(bx*radiusCm).toFixed(1); // + = droite
+  const biasYcm=(by*radiusCm).toFixed(1); // + = bas
+  function biasLabel(angle,cm){
+    if(cm<2)return"centré";
+    if(Math.abs(angle)<22.5)return"droite";
+    if(Math.abs(angle)>157.5)return"gauche";
+    if(angle>0&&angle<157.5)return angle<67.5?"bas-droite":angle<112.5?"bas":"bas-gauche";
+    return angle>-112.5?"haut-droite":angle>-67.5?"haut":"haut-gauche";
+  }
+  // groupement
+  const meanDist=dists.reduce((s,d)=>s+d,0)/n;
+  const stdGroupCm=Math.sqrt(dists.reduce((s,d)=>s+(d-meanDist)**2,0)/n).toFixed(1);
+  let maxPair=0;
+  for(let i=0;i<allArrows.length;i++)
+    for(let j=i+1;j<allArrows.length;j++){
+      const d=Math.sqrt((allArrows[i].nx-allArrows[j].nx)**2+(allArrows[i].ny-allArrows[j].ny)**2)*radiusCm;
+      if(d>maxPair)maxPair=d;
+    }
+  // régularité (σ des moyennes par volée)
+  const vAvgs=volleys.map(v=>v.score/v.arrows.length);
+  const meanAvg=vAvgs.reduce((s,x)=>s+x,0)/vAvgs.length;
+  const regularitySigma=Math.sqrt(vAvgs.reduce((s,x)=>s+(x-meanAvg)**2,0)/vAvgs.length).toFixed(2);
+  // régularité Y (dispersion verticale pure)
+  const yCm=allArrows.map(a=>a.ny*radiusCm);
+  const meanY=yCm.reduce((s,y)=>s+y,0)/n;
+  const regularityY=Math.sqrt(yCm.reduce((s,y)=>s+(y-meanY)**2,0)/n).toFixed(1);
+  // régularité X (dispersion horizontale pure)
+  const xCm=allArrows.map(a=>a.nx*radiusCm);
+  const meanX=xCm.reduce((s,x)=>s+x,0)/n;
+  const regularityX=Math.sqrt(xCm.reduce((s,x)=>s+(x-meanX)**2,0)/n).toFixed(1);
+  // tendance
+  const half=Math.floor(volleys.length/2);
+  const firstHalf=half>0?volleys.slice(0,half).reduce((s,v)=>s+v.score/v.arrows.length,0)/half:null;
+  const secondHalf=volleys.length>1?volleys.slice(half).reduce((s,v)=>s+v.score/v.arrows.length,0)/(volleys.length-half):null;
+  const trend=firstHalf&&secondHalf?((secondHalf-firstHalf)/firstHalf*100).toFixed(1):null;
+  // distribution
+  const dist={};["X",10,9,8,7,6,5,4,3,2,1,0].forEach(k=>dist[k]=0);
+  allArrows.forEach(a=>{dist[a.score]=(dist[a.score]||0)+1});
+  // meilleure/pire volée normalisées
+  const valid=volleys.filter(v=>v.arrows.length>=3);
+  const bestV=valid.length?valid.reduce((b,v)=>normalizeVolley(v)>normalizeVolley(b)?v:b):null;
+  const worstV=valid.length?valid.reduce((b,v)=>normalizeVolley(v)<normalizeVolley(b)?v:b):null;
+  return{
+    n,totalScore,avgPerArrow,avgDistCm,
+    bx,by,biasCm,biasDir:biasLabel(biasAngle,parseFloat(biasCm)),
+    biasXcm,biasYcm,
+    stdGroupCm,maxPairDist:maxPair.toFixed(1),
+    regularitySigma,regularityY,regularityX,
+    trend,dist,bestV,worstV,vAvgs,
+    nbVolleys:volleys.length,radiusCm
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BLOC 4 — SVG HELPERS
+// ═══════════════════════════════════════════════════════════════════
+const SVG_NS="http://www.w3.org/2000/svg";
+function svgEl(tag,attrs={}){
+  const el=document.createElementNS(SVG_NS,tag);
+  for(const[k,v]of Object.entries(attrs))el.setAttribute(k,v);
+  return el;
+}
+function buildTargetSVG(size,rings,isTrispot){
+  const R=size/2-2;
+  const svg=svgEl("svg",{width:size,height:size,viewBox:`${-size/2} ${-size/2} ${size} ${size}`,
+    style:`display:block;border-radius:50%;box-shadow:0 8px 48px rgba(0,0,0,.5),0 0 0 3px rgba(255,255,255,.05);touch-action:none`});
+  if(isTrispot){
+    const bg=svgEl("circle",{cx:0,cy:0,r:R,fill:"#F5F5F0",stroke:"#ccc","stroke-width":.5});svg.appendChild(bg);
+  }
+  [...rings].reverse().forEach(ring=>{
+    const c=svgEl("circle",{cx:0,cy:0,r:ring.r*R,fill:ring.color,stroke:ring.stroke,"stroke-width":.7});
+    svg.appendChild(c);
+  });
+  svg.appendChild(svgEl("line",{x1:-10,y1:0,x2:10,y2:0,stroke:"rgba(0,0,0,.2)","stroke-width":.8}));
+  svg.appendChild(svgEl("line",{x1:0,y1:-10,x2:0,y2:10,stroke:"rgba(0,0,0,.2)","stroke-width":.8}));
+  return{svg,R};
+}
+function scoreColor(score){
+  const n=toNum(score);
+  return score==="X"||n>=9?"#F5C400":n>=7?"#fca5a5":n>=5?"#93c5fd":n===0?"#ef4444":"#94a3b8";
+}
+function barColor(score){
+  const n=toNum(score);
+  return score==="X"||n>=9?"#F5C400":n>=7?"#D92B2B":n>=5?"#1E6DB5":n>=3?"#555":"#ef4444";
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BLOC 5 — COMPOSANT COURBE DE PROGRESSION
+// ═══════════════════════════════════════════════════════════════════
+function buildCurve(avgs,w=320,h=70){
+  if(!avgs||avgs.length===0)return null;
+  const svg=document.createElementNS(SVG_NS,"svg");
+  svg.setAttribute("viewBox",`0 0 ${w} ${h}`);
+  svg.setAttribute("preserveAspectRatio","none");
+  svg.style.width="100%";svg.style.display="block";
+  const pad=6,min=0,max=10,n=avgs.length;
+  const defs=document.createElementNS(SVG_NS,"defs");
+  const grad=document.createElementNS(SVG_NS,"linearGradient");
+  grad.setAttribute("id","cg");grad.setAttribute("x1","0");grad.setAttribute("y1","0");
+  grad.setAttribute("x2","0");grad.setAttribute("y2","1");
+  const s1=document.createElementNS(SVG_NS,"stop");s1.setAttribute("offset","0%");s1.setAttribute("stop-color","#F97316");s1.setAttribute("stop-opacity",".3");
+  const s2=document.createElementNS(SVG_NS,"stop");s2.setAttribute("offset","100%");s2.setAttribute("stop-color","#F97316");s2.setAttribute("stop-opacity","0");
+  grad.appendChild(s1);grad.appendChild(s2);defs.appendChild(grad);svg.appendChild(defs);
+  // grid
+  [2,4,6,8,10].forEach(v=>{
+    const y=h-pad-((v-min)/(max-min))*(h-pad*2);
+    const l=document.createElementNS(SVG_NS,"line");
+    l.setAttribute("x1",0);l.setAttribute("y1",y);l.setAttribute("x2",w);l.setAttribute("y2",y);
+    l.setAttribute("stroke","rgba(255,255,255,.04)");l.setAttribute("stroke-width",1);svg.appendChild(l);
+  });
+  const pts=avgs.map((v,i)=>{
+    const x=n===1?w/2:pad+(i/(n-1))*(w-pad*2);
+    const y=h-pad-((Math.max(0,Math.min(10,v))-min)/(max-min))*(h-pad*2);
+    return[x,y];
+  });
+  let pd=pts.map(([x,y],i)=>{
+    if(i===0)return`M${x},${y}`;
+    const prev=pts[i-1];const cx=(prev[0]+x)/2;
+    return`C${cx},${prev[1]} ${cx},${y} ${x},${y}`;
+  }).join(" ");
+  const area=document.createElementNS(SVG_NS,"path");
+  area.setAttribute("d",pd+` L${pts[pts.length-1][0]},${h} L${pts[0][0]},${h} Z`);
+  area.setAttribute("fill","url(#cg)");svg.appendChild(area);
+  const curve=document.createElementNS(SVG_NS,"path");
+  curve.setAttribute("d",pd);curve.setAttribute("fill","none");
+  curve.setAttribute("stroke","#F97316");curve.setAttribute("stroke-width",2);
+  curve.setAttribute("stroke-linecap","round");svg.appendChild(curve);
+  if(n<=25)pts.forEach(([x,y])=>{
+    const c=document.createElementNS(SVG_NS,"circle");
+    c.setAttribute("cx",x);c.setAttribute("cy",y);c.setAttribute("r",3);
+    c.setAttribute("fill","#F97316");c.setAttribute("stroke","#07090f");c.setAttribute("stroke-width",1.5);
+    svg.appendChild(c);
+  });
+  return svg;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BLOC 6 — POPUP HELPER
+// ═══════════════════════════════════════════════════════════════════
+function showPopup(title,body){
+  const back=document.createElement("div");back.className="popup-backdrop";
+  const box=document.createElement("div");box.className="popup-box pop-in";
+  box.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:16px">${title}</div>
+    <button class="btn-icon" id="popup-close">✕</button>
+  </div><div style="font-size:13px;color:#94a3b8;line-height:1.6">${body}</div>`;
+  back.appendChild(box);document.body.appendChild(back);
+  const close=()=>back.remove();
+  box.querySelector("#popup-close").onclick=close;
+  back.onclick=e=>{if(e.target===back)close()};
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BLOC 7 — BLOC STATS DÉTAIL (réutilisable: séance ou agrégé)
+// ═══════════════════════════════════════════════════════════════════
+function buildStatsBlock(st,container){
+  if(!st){container.innerHTML='<div style="color:#475569;text-align:center;padding:20px">Pas assez de données</div>';return}
+  function card(html,extra=""){return`<div class="card" style="margin-bottom:10px${extra?";"+extra:""}">${html}</div>`}
+  function lbl(t){return`<div class="lbl">${t}</div>`}
+  function kpi(l,v,accent,big){return`<div class="card"><div class="lbl">${l}</div><div style="font-family:'Syne',sans-serif;font-weight:900;font-size:${big?28:22}px;color:${accent};line-height:1.1">${v}</div></div>`}
+  // KPI grid
+  let html=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+    ${kpi("Moy. / flèche",st.avgPerArrow,"#F97316",true)}
+    ${kpi("Dist. moy. mouche",st.avgDistCm+" cm","#818cf8",true)}
+    ${kpi("Score brut",st.totalScore,"#94a3b8",false)}
+    ${kpi("Flèches",st.n,"#94a3b8",false)}
+  </div>`;
+  // Sous-stats groupement
+  html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+    <div class="card" style="cursor:pointer" onclick="showPopup('Écart-type groupement','Mesure la dispersion moyenne des impacts autour du centre. Un écart faible (ex: 5 cm) signifie que tes flèches sont groupées serrées. Un écart élevé (ex: 20 cm) indique une dispersion importante. Objectif : réduire progressivement cet écart.')">
+      <div class="lbl">Groupement σ ℹ️</div>
+      <div style="font-family:'Syne',sans-serif;font-weight:900;font-size:22px;color:#64748b">${st.stdGroupCm} cm</div>
+    </div>
+    <div class="card" style="cursor:pointer" onclick="showPopup('Diamètre du groupe','Distance maximale entre deux impacts dans la séance. Donne une idée du cercle minimum qui contiendrait toutes tes flèches. Plus il est petit, plus ton groupement est serré.')">
+      <div class="lbl">Diam. groupe ℹ️</div>
+      <div style="font-family:'Syne',sans-serif;font-weight:900;font-size:22px;color:#64748b">${st.maxPairDist} cm</div>
+    </div>
+    <div class="card" style="cursor:pointer" onclick="showPopup('Régularité (σ volées)','Écart-type des moyennes par volée. Ex: si tu fais 7/fl, 7.2/fl, 6.9/fl → σ faible = très régulier. Si tu fais 9/fl puis 5/fl → σ élevé = irrégulier. Objectif : σ < 0.8 pour un niveau avancé.')">
+      <div class="lbl">Régularité σ ℹ️</div>
+      <div style="font-family:'Syne',sans-serif;font-weight:900;font-size:22px;color:#64748b">${st.regularitySigma}</div>
+    </div>
+    <div class="card" style="cursor:pointer" onclick="showPopup('Dispersion verticale (σY) et horizontale (σX)','Mesure séparément ta dispersion de haut en bas (Y) et de gauche à droite (X). Si σY >> σX : tu varies plus en hauteur qu\\'en largeur → problème de tension ou de relâcher. Si σX >> σY : tu varies plus latéralement → problème de rotation ou de visée.')">
+      <div class="lbl">σX / σY ℹ️</div>
+      <div style="font-family:'Syne',sans-serif;font-weight:900;font-size:22px;color:#64748b">${st.regularityX} / ${st.regularityY} cm</div>
+    </div>
+  </div>`;
+  // Biais
+  const biasColor=parseFloat(st.biasCm)<=2?"#4ade80":"#F97316";
+  const SIZE=80,R=SIZE/2-4;
+  const bxSvg=Math.max(-1,Math.min(1,parseFloat(st.biasXcm)/st.radiusCm));
+  const bySvg=Math.max(-1,Math.min(1,parseFloat(st.biasYcm)/st.radiusCm));
+  const bx2=bxSvg*R,by2=bySvg*R;
+  const biasSvg=`<svg width="${SIZE}" height="${SIZE}" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="${SIZE/2}" cy="${SIZE/2}" r="${R}" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="1"/>
+    <circle cx="${SIZE/2}" cy="${SIZE/2}" r="${R*.5}" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="1"/>
+    <circle cx="${SIZE/2}" cy="${SIZE/2}" r="${R*.15}" fill="rgba(245,196,0,.15)"/>
+    <line x1="${SIZE/2}" y1="${SIZE/2}" x2="${SIZE/2+bx2}" y2="${SIZE/2+by2}" stroke="#F97316" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="${SIZE/2+bx2}" cy="${SIZE/2+by2}" r="4" fill="#F97316"/>
+    <line x1="${SIZE/2-5}" y1="${SIZE/2}" x2="${SIZE/2+5}" y2="${SIZE/2}" stroke="rgba(255,255,255,.15)" stroke-width=".8"/>
+    <line x1="${SIZE/2}" y1="${SIZE/2-5}" x2="${SIZE/2}" y2="${SIZE/2+5}" stroke="rgba(255,255,255,.15)" stroke-width=".8"/>
+  </svg>`;
+  html+=`<div class="card" style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
+    ${biasSvg}
+    <div style="flex:1">
+      <div class="lbl">Biais directionnel</div>
+      ${parseFloat(st.biasCm)<=2
+        ?`<div style="font-size:13px;color:#4ade80;font-weight:700">Centré ✓</div>`
+        :`<div style="font-size:13px;color:#F97316;font-weight:700">${st.biasDir} · ${st.biasCm} cm</div>
+         <div style="font-size:10px;color:#64748b;margin-top:4px">
+           H: ${parseFloat(st.biasXcm)>0?"droite":"gauche"} ${Math.abs(parseFloat(st.biasXcm))} cm ·
+           V: ${parseFloat(st.biasYcm)>0?"bas":"haut"} ${Math.abs(parseFloat(st.biasYcm))} cm
+         </div>`}
+    </div>
+  </div>`;
+  // Tendance
+  if(st.trend!==null){
+    const tv=parseFloat(st.trend);
+    html+=`<div class="card" style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
+      <div style="flex:1"><div class="lbl">Tendance sur la séance</div>
+        <div style="font-size:12px;color:#94a3b8;margin-top:2px">
+          ${tv>1?"📈 Progression":"📉 Baisse"} ${Math.abs(tv)>1?"":"➡️ Stable"}
+        </div></div>
+      <div style="font-family:'Syne',sans-serif;font-weight:900;font-size:22px;color:${tv>1?"#4ade80":tv<-1?"#f87171":"#94a3b8"}">
+        ${tv>0?"+":""}${st.trend}%
+      </div>
+    </div>`;
+  }
+  // Courbe — placeholder, rempli après insertion
+  html+=`<div class="card" style="margin-bottom:10px">
+    <div class="lbl">Progression (moy/fl par volée)</div>
+    <div id="curve-placeholder" style="height:70px"></div>
+    <div style="display:flex;justify-content:space-between;margin-top:4px">
+      <div style="font-size:9px;color:#334155">Volée #1</div>
+      <div style="font-size:9px;color:#334155">Volée #${st.nbVolleys}</div>
+    </div>
+  </div>`;
+  // Meilleure/pire
+  if(st.bestV||st.worstV){
+    html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div class="card"><div class="lbl">Meilleure volée</div>
+        <div style="font-family:'Syne',sans-serif;font-weight:900;font-size:24px;color:#4ADE80">${st.bestV?normalizeVolley(st.bestV).toFixed(1)+"/30":"—"}</div>
+        <div style="font-size:9px;color:#475569">${st.bestV?`#${st.bestV.num} · ${st.bestV.arrows.length}fl`:""}</div>
+      </div>
+      <div class="card"><div class="lbl">Pire volée</div>
+        <div style="font-family:'Syne',sans-serif;font-weight:900;font-size:24px;color:#f87171">${st.worstV?normalizeVolley(st.worstV).toFixed(1)+"/30":"—"}</div>
+        <div style="font-size:9px;color:#475569">${st.worstV?`#${st.worstV.num} · ${st.worstV.arrows.length}fl`:""}</div>
+      </div>
+    </div>`;
+  }
+  // Répartition
+  const maxD=Math.max(...Object.values(st.dist),1);
+  const keys=["X",10,9,8,7,6,5,4,3,2,1,0].filter(k=>st.dist[k]>0);
+  if(keys.length){
+    html+=`<div class="card" style="margin-bottom:10px"><div class="lbl">Répartition des impacts</div>
+      ${keys.map(k=>`<div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+        <div style="width:20px;font-weight:700;font-size:11px;color:${scoreColor(k)};text-align:center">${k===0?"P":k}</div>
+        <div style="flex:1;height:6px;background:rgba(255,255,255,.05);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${(st.dist[k]/maxD)*100}%;background:${barColor(k)};border-radius:3px"></div>
+        </div>
+        <div style="font-size:11px;color:#475569;min-width:14px;text-align:right">${st.dist[k]}</div>
+      </div>`).join("")}
+    </div>`;
+  }
+  // Insights auto
+  const insights=[];
+  if(parseFloat(st.biasCm)>5)insights.push(`⚠️ Biais ${st.biasDir} important (${st.biasCm} cm). Vérifier la posture ou la visée.`);
+  if(parseFloat(st.regularitySigma)>1.5)insights.push(`⚠️ Régularité faible (σ=${st.regularitySigma}). Les scores varient beaucoup entre les volées.`);
+  if(parseFloat(st.regularitySigma)<=0.8)insights.push(`✓ Excellente régularité (σ=${st.regularitySigma}).`);
+  if(st.trend!==null&&parseFloat(st.trend)<-3)insights.push(`⚠️ Baisse notable en fin de séance (${st.trend}%). Possible fatigue.`);
+  if(st.trend!==null&&parseFloat(st.trend)>3)insights.push(`✓ Progression sur la séance (+${st.trend}%).`);
+  if(parseFloat(st.regularityY)>parseFloat(st.regularityX)*1.5)insights.push(`⚠️ Dispersion verticale (σY=${st.regularityY}cm) > horizontale (σX=${st.regularityX}cm). Vérifier tension ou relâcher.`);
+  if(parseFloat(st.regularityX)>parseFloat(st.regularityY)*1.5)insights.push(`⚠️ Dispersion horizontale (σX=${st.regularityX}cm) > verticale. Vérifier rotation ou visée latérale.`);
+  if(!insights.length)insights.push("Aucun défaut particulier détecté.");
+  html+=`<div class="card" style="border-color:rgba(249,115,22,.15);margin-bottom:10px">
+    <div class="lbl" style="color:#F97316">Analyse automatique</div>
+    ${insights.map(m=>`<div style="font-size:11px;color:#94a3b8;line-height:1.5;margin-top:6px">${m}</div>`).join("")}
+  </div>`;
+  container.innerHTML=html;
+  // Insérer la courbe SVG
+  const placeholder=container.querySelector("#curve-placeholder");
+  if(placeholder&&st.vAvgs&&st.vAvgs.length>0){
+    const curve=buildCurve(st.vAvgs,320,64);
+    if(curve){placeholder.style.height="auto";placeholder.appendChild(curve)}
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BLOC 8 — RENDU PAGES (vanilla JS SPA)
+// ═══════════════════════════════════════════════════════════════════
+let APP={history:[],pseudo:"",screen:"home",sessionParams:null,lastSession:null,resumable:false};
+
+function loadApp(){
+  const d=loadData();APP.history=d.history||[];APP.pseudo=d.pseudo||"";
+  render();
+}
+function persist(){saveData({history:APP.history,pseudo:APP.pseudo})}
+
+function navigate(screen,extra={}){
+  APP.screen=screen;Object.assign(APP,extra);render();
+}
+function render(){
+  const root=$("root");root.innerHTML="";root.className="";
+  if(APP.screen==="home")renderHome(root);
+  else if(APP.screen==="session")renderSession(root);
+  else if(APP.screen==="summary")renderSummary(root);
+  else if(APP.screen==="detail")renderDetail(root);
+  else if(APP.screen==="global")renderGlobal(root);
+}
+
+// ── HOME ──────────────────────────────────────────────────────────
+function renderHome(root){
+  const last=APP.history[APP.history.length-1];
+  const params=APP.lastParams||{distance:"18 m",target:"WA 122cm",bowType:"Recurve",arrowCount:6,note:""};
+  let paramsOpen=false;
+  let histOpen=false;
+  const el=document.createElement("div");el.className="page fade-up";
+
+  el.innerHTML=`
+  <div style="padding:28px 0 20px;text-align:center">
+    <div style="font-size:34px;margin-bottom:4px">🏹</div>
+    <div style="font-family:'Syne',sans-serif;font-size:23px;font-weight:900;letter-spacing:-.5px">ArcheryLog</div>
+    <div id="pseudo-line" style="font-size:12px;color:#475569;margin-top:4px;cursor:pointer"></div>
+  </div>
+  <div id="last-session-card"></div>
+  <button class="btn-primary" id="btn-start" style="margin-bottom:10px">🏹 Démarrer la séance →</button>
+  <button class="btn-ghost" id="btn-toggle-params" style="width:100%;margin-bottom:0"></button>
+  <div id="params-panel" style="display:none;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px 16px;margin-top:10px">
+    <div id="params-inner"></div>
+  </div>
+  <div id="history-section" style="margin-top:16px"></div>`;
+
+  root.appendChild(el);
+  // CSS global
+  root.insertAdjacentHTML("beforeend",`<style>
+    body{font-family:'DM Mono',monospace}
+    .page{width:100%;max-width:420px;margin:0 auto;padding:0 18px 80px}
+  </style>`);
+
+  // Pseudo
+  const pseudoLine=el.querySelector("#pseudo-line");
+  function renderPseudo(){pseudoLine.textContent=APP.pseudo?`👤 ${APP.pseudo}`:"Ajouter un pseudo →"}
+  renderPseudo();
+  pseudoLine.onclick=()=>{
+    const p=prompt("Votre pseudo :",APP.pseudo||"");
+    if(p!==null){APP.pseudo=p.trim();persist();renderPseudo()}
+  };
+
+  // Dernière séance
+  const lastCard=el.querySelector("#last-session-card");
+  if(last){
+    const st=computeStats(last.volleys,last.params?.target);
+    lastCard.innerHTML=`<div class="card" style="margin-bottom:16px;cursor:pointer" id="goto-last">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="flex:1">
+          <div class="lbl">Dernière séance</div>
+          <div style="font-size:12px;color:#94a3b8">${last.date} · ${last.params?.distance} · ${last.params?.bowType}</div>
+          <div style="font-size:10px;color:#64748b;margin-top:2px">${last.volleys.length} volées · ${last.totalArrows} fl.</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:900;color:#F97316">${st?.avgPerArrow||"—"}</div>
+          <div style="font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.8px">moy/flèche</div>
+          <div style="font-size:11px;color:#818cf8;margin-top:2px">${st?.avgDistCm||"—"} cm</div>
+        </div>
+      </div>
+    </div>`;
+    lastCard.querySelector("#goto-last").onclick=()=>navigate("detail",{detailSession:last,detailIdx:APP.history.length-1});
+  }
+
+  // Paramètres
+  function updateParamsLabel(){
+    el.querySelector("#btn-toggle-params").textContent=paramsOpen
+      ?`▲ Masquer les paramètres`
+      :`▼ Paramètres · ${params.distance} · ${params.target} · ${params.bowType} · ${params.arrowCount}fl`;
+  }
+  function buildParamsPanel(){
+    const inner=el.querySelector("#params-inner");
+    const DISTANCES=["5 m","10 m","18 m","25 m","30 m","50 m","70 m"];
+    const TARGETS=["WA 122cm","WA 80cm","WA 60cm","WA 40cm","Trispot"];
+    const BOW_TYPES=["Recurve","Classique","Compound","Nu"];
+    function pillRow(label,options,key){
+      return`<div style="margin-bottom:14px">
+        <div style="font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:7px">${label}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">${options.map(o=>`
+          <button class="pill ${params[key]===o?"active":""}" data-key="${key}" data-val="${o}">${o}</button>
+        `).join("")}</div>
+      </div>`;
+    }
+    inner.innerHTML=`
+      ${pillRow("Distance",DISTANCES,"distance")}
+      ${pillRow("Blason",TARGETS,"target")}
+      ${pillRow("Type d'arc",BOW_TYPES,"bowType")}
+      <div style="margin-bottom:14px">
+        <div style="font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:7px">Flèches / volée</div>
+        <div class="stepper">
+          <button id="arrow-minus">−</button>
+          <span class="val" id="arrow-count">${params.arrowCount}</span>
+          <button id="arrow-plus">+</button>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:7px">Note (optionnel)</div>
+        <input id="note-input" value="${params.note||""}" placeholder="Entraînement, compétition…"
+          style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:10px;color:#f8fafc;font-family:'DM Mono',monospace;font-size:12px;padding:9px 12px">
+      </div>`;
+    // pills events
+    inner.querySelectorAll(".pill").forEach(btn=>{
+      btn.onclick=()=>{params[btn.dataset.key]=btn.dataset.key==="arrowCount"?parseInt(btn.dataset.val):btn.dataset.val;buildParamsPanel();updateParamsLabel()}
+    });
+    // stepper
+    inner.querySelector("#arrow-minus").onclick=()=>{if(params.arrowCount>1){params.arrowCount--;inner.querySelector("#arrow-count").textContent=params.arrowCount;updateParamsLabel()}};
+    inner.querySelector("#arrow-plus").onclick=()=>{params.arrowCount++;inner.querySelector("#arrow-count").textContent=params.arrowCount;updateParamsLabel()};
+    inner.querySelector("#note-input").oninput=e=>params.note=e.target.value;
+  }
+  updateParamsLabel();
+  el.querySelector("#btn-toggle-params").onclick=()=>{
+    paramsOpen=!paramsOpen;
+    el.querySelector("#params-panel").style.display=paramsOpen?"block":"none";
+    if(paramsOpen)buildParamsPanel();
+    updateParamsLabel();
+  };
+
+  // Start
+  el.querySelector("#btn-start").onclick=()=>{
+    APP.lastParams={...params};navigate("session",{sessionParams:{...params,_key:Date.now()}});
+  };
+
+  // Historique
+  renderHistorySection(el.querySelector("#history-section"));
+  function renderHistorySection(sec){
+    if(!APP.history.length){sec.innerHTML="";return}
+    sec.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <button class="btn-ghost" style="flex:1" id="btn-hist">${histOpen?"▲ Masquer l'historique":"▼ Historique ("+APP.history.length+" séance"+(APP.history.length>1?"s":"")+")"}</button>
+      ${APP.history.length>=2?`<button class="btn-ghost" style="color:#818cf8;border-color:rgba(129,140,248,.2)" id="btn-global">📊 Stats</button>`:""}
+    </div>
+    <div id="hist-list"></div>
+    <div id="data-actions" style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn-ghost" style="flex:1;font-size:11px" id="btn-export">⬇ Export JSON</button>
+      <label class="btn-ghost" style="flex:1;font-size:11px;text-align:center;cursor:pointer">⬆ Import JSON<input type="file" accept=".json" style="display:none" id="import-file"></label>
+    </div>`;
+    sec.querySelector("#btn-hist").onclick=()=>{histOpen=!histOpen;renderHistorySection(sec)};
+    if(APP.history.length>=2)sec.querySelector("#btn-global").onclick=()=>navigate("global");
+    sec.querySelector("#btn-export").onclick=()=>exportData({history:APP.history,pseudo:APP.pseudo});
+    sec.querySelector("#import-file").onchange=e=>{
+      if(e.target.files[0])importData(e.target.files[0],d=>{APP.history=d.history;APP.pseudo=d.pseudo||APP.pseudo;persist();render()})
+    };
+    if(!histOpen)return;
+    const list=sec.querySelector("#hist-list");
+    list.innerHTML=[...APP.history].reverse().map((s,ri)=>{
+      const idx=APP.history.length-1-ri;
+      const st=computeStats(s.volleys,s.params?.target);
+      return`<div class="card" style="margin-bottom:8px;cursor:pointer" data-idx="${idx}">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <div style="flex:1">
+            <div style="font-size:12px;color:#94a3b8;font-weight:600">${s.date}</div>
+            <div style="font-size:10px;color:#475569;margin-top:2px">${s.params?.distance||""} · ${s.params?.target||""} · ${s.params?.bowType||""}</div>
+            <div style="font-size:10px;color:#334155;margin-top:1px">${s.volleys.length} volées · ${s.totalArrows} fl. · 🚶 ${s.volleys.length*2*parseInt(s.params?.distance||18)}m</div>
+            <div id="curve-${idx}" style="margin-top:6px"></div>
+          </div>
+          <div style="text-align:right;min-width:52px">
+            <div style="font-family:'Syne',sans-serif;font-size:19px;font-weight:900;color:#F97316">${st?.avgPerArrow||"—"}</div>
+            <div style="font-size:9px;color:#64748b">moy/fl.</div>
+            <div style="font-size:11px;color:#818cf8;margin-top:1px">${st?.avgDistCm||"—"} cm</div>
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+    list.querySelectorAll("[data-idx]").forEach(card=>{
+      const idx=parseInt(card.dataset.idx);
+      card.onclick=()=>navigate("detail",{detailSession:APP.history[idx],detailIdx:idx});
+      // courbe compacte
+      const st=computeStats(APP.history[idx].volleys,APP.history[idx].params?.target);
+      if(st?.vAvgs){
+        const c=buildCurve(st.vAvgs,280,32);
+        if(c)card.querySelector(`#curve-${idx}`).appendChild(c);
+      }
+    });
+  }
+}
+
+// ── DETAIL SÉANCE ────────────────────────────────────────────────
+function renderDetail(root){
+  const s=APP.detailSession;
+  const idx=APP.detailIdx;
+  const st=computeStats(s.volleys,s.params?.target);
+  const distMarche=s.volleys.length*2*parseInt(s.params?.distance||18);
+  let confirmDel=false;
+  const el=document.createElement("div");el.className="page fade-up";
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;margin:18px 0 18px">
+      <button class="btn-ghost" id="btn-back">←</button>
+      <div style="flex:1">
+        <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:900">${s.date}</div>
+        <div style="font-size:10px;color:#475569;margin-top:1px">${s.params?.distance||""} · ${s.params?.target||""} · ${s.params?.bowType||""}${s.params?.note?" · "+s.params.note:""}</div>
+        <div style="font-size:10px;color:#64748b;margin-top:1px">${s.volleys.length} volées · ${s.totalArrows} fl. · 🚶 ${distMarche}m</div>
+      </div>
+      <button class="btn-ghost" id="btn-del" style="color:#ef4444;border-color:rgba(239,68,68,.2)">🗑</button>
+    </div>
+    <div id="del-confirm" style="display:none;margin-bottom:10px;display:none">
+      <div style="font-size:12px;color:#ef4444;margin-bottom:8px">Supprimer cette séance ?</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-danger" style="flex:1" id="btn-del-confirm">Oui, supprimer</button>
+        <button class="btn-ghost" style="flex:1" id="btn-del-cancel">Annuler</button>
+      </div>
+    </div>
+    <div id="stats-container"></div>`;
+  root.appendChild(el);
+  el.querySelector("#btn-back").onclick=()=>navigate("home");
+  el.querySelector("#btn-del").onclick=()=>{
+    el.querySelector("#del-confirm").style.display="block";
+  };
+  el.querySelector("#btn-del-confirm").onclick=()=>{
+    APP.history.splice(idx,1);persist();showToast("Séance supprimée");navigate("home");
+  };
+  el.querySelector("#btn-del-cancel").onclick=()=>{el.querySelector("#del-confirm").style.display="none"};
+  buildStatsBlock(st,el.querySelector("#stats-container"));
+}
+
+// ── GLOBAL STATS ─────────────────────────────────────────────────
+function renderGlobal(root){
+  if(APP.history.length<2){
+    root.innerHTML=`<div class="page fade-up" style="padding-top:40px;text-align:center;color:#475569">Il faut au moins 2 séances.</div>`;
+    root.querySelector(".page").insertAdjacentHTML("afterbegin",`<button class="btn-ghost" onclick="navigate('home')" style="margin-bottom:20px">←</button>`);
+    return;
+  }
+  let period=3;// mois
+  let aggrOpen=false;
+  const el=document.createElement("div");el.className="page fade-up";
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;margin:18px 0 20px">
+      <button class="btn-ghost" id="btn-back">←</button>
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:900">Statistiques globales</div>
+    </div>
+    <div id="global-content"></div>`;
+  root.appendChild(el);
+  el.querySelector("#btn-back").onclick=()=>navigate("home");
+  buildGlobalContent(el.querySelector("#global-content"),period,aggrOpen);
+  function buildGlobalContent(container,p,agO){
+    const allStats=APP.history.map(s=>({st:computeStats(s.volleys,s.params?.target),s}));
+    const avgs=allStats.map(x=>parseFloat(x.st?.avgPerArrow||0));
+    const firstAvg=avgs[0],lastAvg=avgs[avgs.length-1];
+    const globalTrend=firstAvg>0?((lastAvg-firstAvg)/firstAvg*100).toFixed(1):"—";
+    const bestIdx=avgs.indexOf(Math.max(...avgs));
+    const totalArrows=APP.history.reduce((s,h)=>s+h.totalArrows,0);
+    container.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      ${kpi2("Séances",APP.history.length,"#94a3b8",true)}
+      ${kpi2("Tendance globale",(parseFloat(globalTrend)>0?"+":"")+globalTrend+"%",parseFloat(globalTrend)>0?"#4ade80":"#f87171",true)}
+      ${kpi2("Meilleure moy.",Math.max(...avgs).toFixed(2),"#F97316",false)}
+      ${kpi2("Total flèches",totalArrows,"#94a3b8",false)}
+    </div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="lbl">Évolution moy/flèche séance par séance</div>
+      <div id="global-curve" style="height:80px"></div>
+    </div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="lbl">Meilleure séance</div>
+      <div style="font-family:'Syne',sans-serif;font-weight:900;font-size:20px;color:#4ade80">${APP.history[bestIdx]?.date}</div>
+      <div style="font-size:11px;color:#64748b;margin-top:3px">${APP.history[bestIdx]?.params?.distance} · ${avgs[bestIdx].toFixed(2)}/fl</div>
+    </div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="lbl">Défauts récurrents</div>
+      <div id="defauts-content" style="margin-top:6px"></div>
+    </div>
+    <!-- Agrégé par période -->
+    <button class="btn-ghost" id="btn-aggr" style="width:100%;margin-bottom:0">${agO?"▲ Masquer l'analyse par période":"▼ Analyse par période"}</button>
+    <div id="aggr-panel" style="display:${agO?"block":"none"}">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">
+        ${[3,6,9,12].map(m=>`<button class="pill ${p===m?"active":""}" data-months="${m}">${m} mois</button>`).join("")}
+      </div>
+      <div id="aggr-stats"></div>
+    </div>
+    <!-- Toutes les séances -->
+    <div class="card" style="margin-top:12px">
+      <div class="lbl">Toutes les séances</div>
+      <div id="all-sessions"></div>
+    </div>`;
+    // courbe globale
+    const gc=buildCurve(avgs,320,74);
+    if(gc)container.querySelector("#global-curve").appendChild(gc);
+    // défauts
+    const defDiv=container.querySelector("#defauts-content");
+    const defMsgs=[];
+    const biasedN=allStats.filter(x=>x.st&&parseFloat(x.st.biasCm)>5).length;
+    if(biasedN>=APP.history.length*.5)defMsgs.push(`⚠️ Biais directionnel dans ${biasedN}/${APP.history.length} séances.`);
+    const irregN=allStats.filter(x=>x.st&&parseFloat(x.st.regularitySigma)>1.5).length;
+    if(irregN>=APP.history.length*.5)defMsgs.push(`⚠️ Régularité insuffisante dans ${irregN}/${APP.history.length} séances.`);
+    const fadeN=allStats.filter(x=>x.st&&x.st.trend!==null&&parseFloat(x.st.trend)<-3).length;
+    if(fadeN>=APP.history.length*.4)defMsgs.push(`⚠️ Baisse en fin de séance fréquente (${fadeN}/${APP.history.length}).`);
+    if(!defMsgs.length)defMsgs.push("✓ Aucun défaut récurrent détecté.");
+    defDiv.innerHTML=defMsgs.map(m=>`<div style="font-size:11px;color:#94a3b8;line-height:1.5;margin-bottom:4px">${m}</div>`).join("");
+    // bouton agrégé
+    container.querySelector("#btn-aggr").onclick=()=>{
+      agO=!agO;buildGlobalContent(container,p,agO);
+    };
+    // pills période
+    container.querySelectorAll("[data-months]").forEach(btn=>{
+      btn.onclick=()=>{p=parseInt(btn.dataset.months);buildGlobalContent(container,p,agO)};
+    });
+    // calcul agrégé
+    if(agO){
+      const cutoff=new Date();cutoff.setMonth(cutoff.getMonth()-p);
+      // On ne filtre pas par date réelle (données de démo n'ont pas de timestamp)
+      // On prend les N dernières séances proportionnellement
+      const nSessions=Math.max(1,Math.ceil(APP.history.length*(p/12)));
+      const sliced=APP.history.slice(-nSessions);
+      const aggrVolleys=sliced.flatMap(s=>s.volleys);
+      const aggrTarget=sliced[0]?.params?.target||"WA 122cm";
+      const aggrSt=computeStats(aggrVolleys,aggrTarget);
+      const aggrDiv=container.querySelector("#aggr-stats");
+      aggrDiv.innerHTML=`<div style="font-size:11px;color:#64748b;margin-bottom:10px">${sliced.length} séances · ${aggrVolleys.length} volées · ${aggrVolleys.flatMap(v=>v.arrows).length} flèches</div>`;
+      buildStatsBlock(aggrSt,aggrDiv);
+    }
+    // all sessions table
+    const allDiv=container.querySelector("#all-sessions");
+    allDiv.innerHTML=[...APP.history].reverse().map((s,ri)=>{
+      const idx2=APP.history.length-1-ri;
+      const st2=allStats[idx2]?.st;
+      return`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer" data-idx="${idx2}">
+        <div style="flex:1">
+          <div style="font-size:11px;color:#94a3b8">${s.date}</div>
+          <div style="font-size:9px;color:#475569">${s.params?.distance||""} · ${s.params?.target||""}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:#F97316">${st2?.avgPerArrow||"—"}</div>
+          <div style="font-size:9px;color:#818cf8">${st2?.avgDistCm||"—"} cm</div>
+        </div>
+      </div>`;
+    }).join("");
+    allDiv.querySelectorAll("[data-idx]").forEach(row=>{
+      const idx2=parseInt(row.dataset.idx);
+      row.onclick=()=>navigate("detail",{detailSession:APP.history[idx2],detailIdx:idx2});
+    });
+  }
+  function kpi2(l,v,accent,big){return`<div class="card"><div class="lbl">${l}</div><div style="font-family:'Syne',sans-serif;font-weight:900;font-size:${big?28:22}px;color:${accent};line-height:1.1">${v}</div></div>`}
+}
+
+// ── SESSION ──────────────────────────────────────────────────────
+function renderSession(root){
+  const params=APP.sessionParams;
+  const rings=getRings(params.target);
+  const isTrispot=params.target==="Trispot";
+  const SIZE=Math.min(window.innerWidth-56,300);
+  const R_SVG=SIZE/2-2;
+  let volleys=[],currentArrows=[],selectedIdx=null,volleyNum=1,maxArrows=params.arrowCount,editingVolley=null;
+  const el=document.createElement("div");el.className="page fade-up";
+  el.style.paddingBottom="60px";
+  el.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:14px 0 8px">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:900" id="volley-title">🏹 Volée <span style="color:#F97316">#1</span></div>
+        <div style="font-size:10px;color:#475569;margin-top:1px">${params.distance} · ${params.target} · ${params.bowType}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:9px;color:#334155;text-transform:uppercase;letter-spacing:1px">Total</div>
+        <div id="total-score" style="font-family:'Syne',sans-serif;font-size:22px;font-weight:900;color:#F5C400;line-height:1.1">0</div>
+        <div id="avg-display" style="font-size:9px;color:#475569">—/fl</div>
+      </div>
+    </div>
+    <div id="progress-bar" style="display:flex;gap:5px;align-items:center;margin-bottom:10px"></div>
+    <div style="display:flex;justify-content:center;padding:0 6px;position:relative" id="target-wrap"></div>
+    <div id="hint" style="text-align:center;font-size:10px;color:#334155;margin-top:8px">Touchez le blason pour placer une flèche</div>
+    <div id="scores-row" style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;padding:10px 0 0"></div>
+    <div id="actions" style="display:flex;gap:8px;margin-top:12px"></div>
+    <div id="terminate-btn" style="margin-top:10px"></div>
+    <div id="prev-volleys" style="margin-top:16px"></div>`;
+  root.appendChild(el);
+
+  // Target SVG
+  const wrap=el.querySelector("#target-wrap");
+  const {svg,R}=buildTargetSVG(SIZE,rings,isTrispot);
+  svg.style.borderRadius="50%";
+  wrap.appendChild(svg);
+
+  // Magnifier
+  const magDiv=document.createElement("div");
+  magDiv.style.cssText="position:absolute;top:-160px;left:50%;transform:translateX(-50%);pointer-events:none;z-index:30;display:none;flex-direction:column;align-items:center";
+  const MAG_W=130,MAG_H=130,WINDOW=R*0.255;
+  magDiv.innerHTML=`<div style="background:#0a0f1c;border-radius:18px;padding:5px;box-shadow:0 12px 40px rgba(0,0,0,.7);border:2px solid rgba(255,255,255,.13)">
+    <svg id="mag-svg" width="${MAG_W}" height="${MAG_H}" style="display:block;border-radius:13px;overflow:hidden"></svg>
+    <div id="mag-label" style="text-align:center;font-size:12px;font-weight:700;padding:5px 4px 3px;letter-spacing:.5px"></div>
+  </div>
+  <div style="width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-top:11px solid #0a0f1c"></div>`;
+  wrap.style.position="relative";wrap.appendChild(magDiv);
+
+  function updateMagnifier(nx,ny){
+    const score=getScore(nx,ny,rings);
+    const vx=nx*R-WINDOW,vy=ny*R-WINDOW,vSize=WINDOW*2;
+    const magSvg=magDiv.querySelector("#mag-svg");
+    magSvg.setAttribute("viewBox",`${vx} ${vy} ${vSize} ${vSize}`);
+    magSvg.innerHTML="";
+    if(isTrispot){const bg=svgEl("circle",{cx:0,cy:0,r:R,fill:"#F5F5F0"});magSvg.appendChild(bg)}
+    [...rings].reverse().forEach(ring=>{
+      magSvg.appendChild(svgEl("circle",{cx:0,cy:0,r:ring.r*R,fill:ring.color,stroke:ring.stroke,"stroke-width":.5}));
+    });
+    const ch=WINDOW*.18,cw=WINDOW*.04,cr=WINDOW*.06;
+    const csty=`stroke:#F97316;stroke-width:${cw};stroke-linecap:round`;
+    magSvg.appendChild(svgEl("line",{x1:nx*R-ch,y1:ny*R,x2:nx*R+ch,y2:ny*R,...Object.fromEntries(csty.split(";").map(s=>s.split(":")))}));
+    magSvg.appendChild(svgEl("line",{x1:nx*R,y1:ny*R-ch,x2:nx*R,y2:ny*R+ch,...Object.fromEntries(csty.split(";").map(s=>s.split(":")))}));
+    magSvg.appendChild(svgEl("circle",{cx:nx*R,cy:ny*R,r:cr,fill:"#F97316"}));
+    const label=score===0?"Paille":score==="X"?"X (10 pts)":score+" pt"+(score>1?"s":"");
+    const lc=score===0?"#ef4444":(score==="X"||score>=9)?"#F5C400":"#f8fafc";
+    magDiv.querySelector("#mag-label").style.color=lc;
+    magDiv.querySelector("#mag-label").textContent=label;
+    magDiv.style.display="flex";
+  }
+
+  // Arrow pins layer
+  const pinsGroup=svgEl("g",{});svg.appendChild(pinsGroup);
+  const dragCircle=svgEl("circle",{r:8,fill:"#F97316",opacity:.8,style:"display:none;pointer-events:none"});
+  svg.appendChild(dragCircle);
+
+  function renderPins(){
+    pinsGroup.innerHTML="";
+    currentArrows.forEach((a,i)=>{
+      const g=svgEl("g",{transform:`translate(${a.nx*R},${a.ny*R})`,style:"pointer-events:none"});
+      g.appendChild(svgEl("circle",{r:13,fill:"rgba(0,0,0,.28)",cx:1.5,cy:2.5}));
+      g.appendChild(svgEl("circle",{r:12,fill:selectedIdx===i?"#F97316":"#fff",stroke:selectedIdx===i?"#EA580C":"rgba(0,0,0,.45)","stroke-width":selectedIdx===i?2.5:1.5}));
+      const txt=document.createElementNS(SVG_NS,"text");
+      txt.setAttribute("text-anchor","middle");txt.setAttribute("dominant-baseline","central");
+      txt.setAttribute("font-size",a.score==="X"?10:11);txt.setAttribute("font-weight","800");
+      txt.setAttribute("font-family","'DM Mono',monospace");
+      txt.setAttribute("fill",selectedIdx===i?"#fff":"#0f172a");
+      txt.setAttribute("style","pointer-events:none");
+      txt.textContent=a.score===0?"P":String(a.score);g.appendChild(txt);
+      g.appendChild(svgEl("line",{x1:0,y1:12,x2:0,y2:20,stroke:selectedIdx===i?"#EA580C":"#555","stroke-width":2.5,"stroke-linecap":"round"}));
+      pinsGroup.appendChild(g);
+    });
+  }
+
+  function toNorm(e){
+    const rect=svg.getBoundingClientRect();
+    const cx=rect.left+rect.width/2,cy=rect.top+rect.height/2,rr=rect.width/2;
+    const px=e.touches?e.touches[0].clientX:e.clientX;
+    const py=e.touches?e.touches[0].clientY:e.clientY;
+    return{nx:(px-cx)/rr,ny:(py-cy)/rr};
+  }
+  function hitArrow(e){
+    const rect=svg.getBoundingClientRect();
+    const cx=rect.left+rect.width/2,cy=rect.top+rect.height/2,rr=rect.width/2;
+    const px=e.touches?e.touches[0].clientX:e.clientX;
+    const py=e.touches?e.touches[0].clientY:e.clientY;
+    for(let i=currentArrows.length-1;i>=0;i--){
+      const ax=cx+currentArrows[i].nx*rr,ay=cy+currentArrows[i].ny*rr;
+      if(Math.sqrt((px-ax)**2+(py-ay)**2)<=28)return i;
+    }
+    return-1;
+  }
+
+  let dragging=false;
+  function onDown(e){
+    e.preventDefault();
+    const hit=hitArrow(e);
+    if(hit>=0){selectedIdx=selectedIdx===hit?null:hit;updateUI();return}
+    if(currentArrows.length>=maxArrows&&selectedIdx===null)return;
+    dragging=true;
+    const{nx,ny}=toNorm(e);
+    dragCircle.setAttribute("cx",nx*R);dragCircle.setAttribute("cy",ny*R);dragCircle.style.display="";
+    updateMagnifier(nx,ny);
+  }
+  function onMove(e){
+    if(!dragging)return;e.preventDefault();
+    const{nx,ny}=toNorm(e);
+    dragCircle.setAttribute("cx",nx*R);dragCircle.setAttribute("cy",ny*R);
+    updateMagnifier(nx,ny);
+  }
+  function onUp(e){
+    if(!dragging)return;e.preventDefault();dragging=false;
+    dragCircle.style.display="none";magDiv.style.display="none";
+    const{nx,ny}=toNorm(e);
+    const score=getScore(nx,ny,rings);
+    if(selectedIdx!==null){currentArrows[selectedIdx]={nx,ny,score};selectedIdx=null}
+    else{currentArrows.push({nx,ny,score})}
+    updateUI();
+  }
+  svg.addEventListener("pointerdown",onDown);
+  svg.addEventListener("pointermove",onMove);
+  svg.addEventListener("pointerup",onUp);
+  svg.addEventListener("pointercancel",()=>{dragging=false;dragCircle.style.display="none";magDiv.style.display="none"});
+
+  function totalValidated(){return volleys.reduce((s,v)=>s+v.score,0)}
+  function currentScore(){return currentArrows.reduce((s,a)=>s+toNum(a.score),0)}
+  function allArrowsCount(){return volleys.reduce((s,v)=>s+v.arrows.length,0)+currentArrows.length}
+  function updateUI(){
+    // score
+    el.querySelector("#total-score").textContent=totalValidated()+currentScore();
+    const n=allArrowsCount();
+    el.querySelector("#avg-display").textContent=n>0?((totalValidated()+currentScore())/n).toFixed(1)+"/fl":"—/fl";
+    // title
+    el.querySelector("#volley-title").innerHTML=editingVolley!==null
+      ?`🏹 Édition <span style="color:#F97316">#${volleys[editingVolley]?.num}</span>`
+      :`🏹 Volée <span style="color:#F97316">#${volleyNum}</span>`;
+    // progress
+    const pb=el.querySelector("#progress-bar");
+    pb.innerHTML="";
+    for(let i=0;i<maxArrows;i++){
+      const d=document.createElement("div");
+      d.style.cssText=`flex:1;height:4px;border-radius:2px;background:${i<currentArrows.length?"#F97316":"rgba(255,255,255,.07)"};transition:background .2s`;
+      pb.appendChild(d);
+    }
+    const cnt=document.createElement("span");
+    cnt.style.cssText="font-size:10px;color:#475569;margin-left:4px;white-space:nowrap";
+    cnt.textContent=`${currentArrows.length}/${maxArrows}`;pb.appendChild(cnt);
+    const plus=document.createElement("button");plus.className="btn-ghost";
+    plus.style.cssText="padding:2px 7px;font-size:11px;border-radius:7px;margin-left:4px;color:#4ade80;border-color:rgba(74,222,128,.22)";
+    plus.textContent="+1";plus.onclick=()=>{maxArrows++;updateUI()};pb.appendChild(plus);
+    // pins
+    renderPins();
+    // scores row
+    const sr=el.querySelector("#scores-row");sr.innerHTML="";
+    currentArrows.forEach((a,i)=>{
+      const b=document.createElement("span");
+      const n2=toNum(a.score),isX=a.score==="X";
+      const sel=selectedIdx===i;
+      b.style.cssText=`display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:9px;font-family:'DM Mono',monospace;font-weight:800;font-size:13px;cursor:pointer;transition:all .15s;
+        background:${sel?"#F97316":isX?"linear-gradient(135deg,#F5C400,#D4A000)":n2>=9?"rgba(245,196,0,.15)":n2>=7?"rgba(217,43,43,.18)":n2>=5?"rgba(30,109,181,.18)":n2===0?"rgba(239,68,68,.12)":"rgba(255,255,255,.06)"};
+        border:${sel?"2px solid #EA580C":isX?"none":n2>=9?"1px solid rgba(245,196,0,.5)":n2>=7?"1px solid rgba(217,43,43,.4)":n2>=5?"1px solid rgba(30,109,181,.4)":"1px solid rgba(255,255,255,.1)"};
+        color:${sel?"#fff":isX?"#1a1000":n2>=9?"#F5C400":n2>=7?"#fca5a5":n2>=5?"#93c5fd":n2===0?"#ef4444":"#94a3b8"}`;
+      b.textContent=a.score===0?"P":String(a.score);
+      b.onclick=()=>{selectedIdx=selectedIdx===i?null:i;updateUI()};
+      sr.appendChild(b);
+    });
+    if(currentArrows.length>0){
+      const tot=document.createElement("span");
+      tot.style.cssText="display:inline-flex;align-items:center;height:34px;padding:0 10px;border-radius:9px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.28);font-family:'Syne',sans-serif;font-weight:800;font-size:15px;color:#F97316";
+      tot.textContent="= "+currentScore();sr.appendChild(tot);
+    }
+    // hint
+    el.querySelector("#hint").textContent=selectedIdx!==null
+      ?"Flèche sélectionnée · touchez le blason pour la déplacer"
+      :currentArrows.length<maxArrows?"Touchez le blason pour placer une flèche":"Volée complète";
+    // actions
+    const acts=el.querySelector("#actions");acts.innerHTML="";
+    if(selectedIdx!==null){
+      const db=document.createElement("button");db.className="btn-danger";db.style.padding="11px 16px";
+      db.textContent="Supprimer";db.onclick=()=>{currentArrows.splice(selectedIdx,1);selectedIdx=null;updateUI()};acts.appendChild(db);
+    }
+    const vb=document.createElement("button");vb.className="btn-primary";vb.style.flex="1";
+    vb.textContent=editingVolley!==null?"Sauvegarder ✓":"Valider la volée →";
+    vb.disabled=currentArrows.length===0;vb.onclick=validateVolley;acts.appendChild(vb);
+    if(editingVolley!==null){
+      const cb=document.createElement("button");cb.className="btn-ghost";cb.style.padding="11px 13px";
+      cb.textContent="✕";cb.onclick=()=>{currentArrows=[];selectedIdx=null;editingVolley=null;maxArrows=params.arrowCount;updateUI()};acts.appendChild(cb);
+    }
+    // terminate
+    const term=el.querySelector("#terminate-btn");term.innerHTML="";
+    if(volleys.length>0||currentArrows.length>0){
+      const tb=document.createElement("button");tb.className="btn-ghost";tb.style.cssText="width:100%;font-size:12px";
+      tb.textContent="Terminer la séance →";tb.onclick=()=>endSession(false);term.appendChild(tb);
+    }
+    // prev volleys
+    const pv=el.querySelector("#prev-volleys");
+    if(volleys.length>0){
+      pv.innerHTML=`<div style="font-size:10px;color:#334155;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px">Volées précédentes</div>`;
+      const list=document.createElement("div");list.style.cssText="display:flex;flex-direction:column;gap:6px";
+      [...volleys].reverse().forEach((v,ri)=>{
+        const idx=volleys.length-1-ri;
+        const isEd=editingVolley===idx;
+        const row=document.createElement("div");
+        row.style.cssText=`background:${isEd?"rgba(249,115,22,.08)":"rgba(255,255,255,.025)"};border:1px solid ${isEd?"rgba(249,115,22,.35)":"rgba(255,255,255,.06)"};border-radius:12px;padding:10px 13px;display:flex;align-items:center;gap:8px;cursor:pointer`;
+        row.innerHTML=`<div style="font-size:10px;color:#334155;min-width:20px">#${v.num}</div>
+          <div style="display:flex;gap:4px;flex:1;flex-wrap:wrap">${v.arrows.map(a=>{
+            const n2=toNum(a.score);
+            return`<span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;font-size:11px;font-weight:800;
+              background:${a.score==="X"?"linear-gradient(135deg,#F5C400,#D4A000)":n2>=9?"rgba(245,196,0,.15)":n2>=7?"rgba(217,43,43,.18)":n2>=5?"rgba(30,109,181,.18)":"rgba(255,255,255,.06)"};
+              color:${a.score==="X"?"#1a1000":n2>=9?"#F5C400":n2>=7?"#fca5a5":n2>=5?"#93c5fd":"#94a3b8"}">${a.score===0?"P":a.score}</span>`;
+          }).join("")}</div>
+          <div style="font-size:9px;color:#475569;margin-right:4px">${(v.score/v.arrows.length).toFixed(1)}/fl</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:#F5C400">${v.score}</div>`;
+        row.onclick=()=>{
+          if(currentArrows.length>0&&editingVolley!==idx&&!confirm("Abandonner la volée en cours ?"))return;
+          currentArrows=[...v.arrows];maxArrows=v.expectedSize||params.arrowCount;editingVolley=idx;selectedIdx=null;updateUI();
+        };
+        list.appendChild(row);
+      });
+      pv.appendChild(list);
+    }
+  }
+
+  function validateVolley(){
+    const score=currentArrows.reduce((s,a)=>s+toNum(a.score),0);
+    const volley={arrows:[...currentArrows],score,num:editingVolley!==null?volleys[editingVolley].num:volleyNum,expectedSize:maxArrows};
+    if(editingVolley!==null){volleys[editingVolley]=volley;editingVolley=null}
+    else{volleys.push(volley);volleyNum++}
+    currentArrows=[];selectedIdx=null;maxArrows=params.arrowCount;updateUI();
+  }
+
+  function endSession(fromResume){
+    // Auto-valider la volée en cours si des flèches ont été posées
+    if(currentArrows.length>0){
+      const score=currentArrows.reduce((s,a)=>s+toNum(a.score),0);
+      if(editingVolley!==null)volleys[editingVolley]={arrows:[...currentArrows],score,num:volleys[editingVolley].num,expectedSize:maxArrows};
+      else{volleys.push({arrows:[...currentArrows],score,num:volleyNum,expectedSize:maxArrows});volleyNum++}
+      currentArrows=[];selectedIdx=null;
+    }
+    if(volleys.length===0){navigate("home");return}
+    const allArr=volleys.flatMap(v=>v.arrows);
+    const totalArr=allArr.length;
+    const totalSc=volleys.reduce((s,v)=>s+v.score,0);
+    const avgPA=totalArr>0?(totalSc/totalArr).toFixed(2):"—";
+    const rCm=TARGET_RADIUS[params.target]||61;
+    const avgDist=totalArr>0?(allArr.reduce((s,a)=>s+Math.sqrt(a.nx**2+a.ny**2),0)/totalArr*rCm).toFixed(1):"—";
+    const sessionData={
+      id:Date.now(),
+      date:new Date().toLocaleDateString("fr-FR",{day:"numeric",month:"short",year:"numeric"}),
+      params,volleys:[...volleys],totalArrows:totalArr,totalScore:totalSc,avgPerArrow:avgPA,avgDistCm:avgDist
+    };
+    APP.history.push(sessionData);persist();
+    APP.lastSession=sessionData;
+    APP.resumable=true;
+    navigate("summary",{summarySession:sessionData,summaryVolleys:volleys,summaryParams:params});
+  }
+
+  updateUI();
+}
+
+// ── SUMMARY ──────────────────────────────────────────────────────
+function renderSummary(root){
+  const s=APP.summarySession;
+  const st=computeStats(s.volleys,s.params?.target);
+  const distMarche=s.volleys.length*2*parseInt(s.params?.distance||18);
+  const el=document.createElement("div");el.className="page fade-up";
+  el.innerHTML=`
+    <div style="margin:20px 0 20px">
+      <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:900">Résumé de séance</div>
+      <div style="font-size:11px;color:#475569;margin-top:3px">${s.date} · ${s.params?.distance} · ${s.params?.target} · ${s.params?.bowType}</div>
+      <div style="font-size:11px;color:#64748b;margin-top:2px">${s.volleys.length} volée${s.volleys.length!==1?"s":""} · ${s.totalArrows} flèches · 🚶 ${distMarche}m parcourus</div>
+    </div>
+    <div id="summary-stats"></div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
+      <button class="btn-ghost" id="btn-resume" style="color:#F97316;border-color:rgba(249,115,22,.3)">← Reprendre la séance</button>
+      <button class="btn-primary" id="btn-new">Nouvelle séance →</button>
+      <button class="btn-ghost" id="btn-home">Retour à l'accueil</button>
+    </div>`;
+  root.appendChild(el);
+  buildStatsBlock(st,el.querySelector("#summary-stats"));
+  el.querySelector("#btn-resume").onclick=()=>{
+    // Reprendre : relancer la session avec les données actuelles
+    navigate("session",{sessionParams:{...s.params,_key:s.id}});
+  };
+  el.querySelector("#btn-new").onclick=()=>navigate("home");
+  el.querySelector("#btn-home").onclick=()=>navigate("home");
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// STYLES GLOBAUX
+// ═══════════════════════════════════════════════════════════════════
+document.head.insertAdjacentHTML("beforeend",`<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;700&family=Syne:wght@700;800;900&display=swap');
+  .btn-primary{display:block;text-align:center}
+  .btn-ghost{display:block;text-align:center;width:100%}
+  .stepper button{font-size:18px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:9px;color:#f8fafc;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  svg{touch-action:none}
+</style>`);
+
+// ═══════════════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════════════
+loadApp();
+</script>
+
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./archery-sw.js')
+      .then(r=>console.log('SW registered'))
+      .catch(e=>console.log('SW error',e));
+  });
+}
+</script>
+</body>
+</html>

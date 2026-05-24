@@ -1,0 +1,22 @@
+{
+  "name": "ArcheryLog",
+  "short_name": "ArcheryLog",
+  "description": "Carnet d'entraînement tir à l'arc",
+  "start_url": "./archery-pwa.html",
+  "display": "standalone",
+  "background_color": "#07090f",
+  "theme_color": "#07090f",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%2307090f'/><text y='130' x='96' font-size='110' text-anchor='middle'>🏹</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%2307090f'/><text y='350' x='256' font-size='300' text-anchor='middle'>🏹</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
