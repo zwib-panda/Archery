@@ -148,7 +148,6 @@ const GDRIVE={
   token:null,
   fileId:null,
   enabled:false,
-  email:localStorage.getItem("gdrive_email")||"",
 };
 
 // Charger le SDK Google Identity Services
@@ -174,14 +173,6 @@ async function gdriveConnect(){
           GDRIVE.token=resp.access_token;
           GDRIVE.enabled=true;
           localStorage.setItem("gdrive_enabled","1");
-          // Récupérer l'email du compte connecté
-          try{
-            const ui=await fetch("https://www.googleapis.com/oauth2/v3/userinfo",
-              {headers:{Authorization:"Bearer "+resp.access_token}});
-            const ud=await ui.json();
-            GDRIVE.email=ud.email||"";
-            localStorage.setItem("gdrive_email",GDRIVE.email);
-          }catch{}
           resolve(resp.access_token);
         }
       });
@@ -193,9 +184,8 @@ async function gdriveConnect(){
 // Déconnecter
 function gdriveDisconnect(){
   if(GDRIVE.token)google?.accounts?.oauth2?.revoke(GDRIVE.token,()=>{});
-  GDRIVE.token=null;GDRIVE.fileId=null;GDRIVE.enabled=false;GDRIVE.email="";
+  GDRIVE.token=null;GDRIVE.fileId=null;GDRIVE.enabled=false;
   localStorage.removeItem("gdrive_enabled");
-  localStorage.removeItem("gdrive_email");
   showToast("Google Drive déconnecté");
 }
 
@@ -259,28 +249,22 @@ async function gdriveSave(data){
 
 // Connexion automatique silencieuse au démarrage (si déjà autorisé)
 async function gdriveAutoConnect(){
-  if(!localStorage.getItem("gdrive_enabled"))return false;
+  if(!localStorage.getItem("gdrive_enabled"))return;
   try{
     await loadGisScript();
     return new Promise(resolve=>{
-      // prompt:"none" = silencieux, pas de popup
-      // Si l'user est connecté à Google sur le navigateur → token immédiat
-      // Si session Google expirée → error="interaction_required" → on attend action manuelle
       const client=google.accounts.oauth2.initTokenClient({
         client_id:GDRIVE.CLIENT_ID,
         scope:GDRIVE.SCOPES,
-        prompt:"none",
+        prompt:"",
         callback:async resp=>{
-          if(resp.error){
-            // Session Google expirée : on garde gdrive_enabled pour proposer le bouton
-            resolve(false);return;
-          }
+          if(resp.error){resolve(false);return}
           GDRIVE.token=resp.access_token;
           GDRIVE.enabled=true;
           resolve(true);
         }
       });
-      client.requestAccessToken({prompt:"none"});
+      client.requestAccessToken({prompt:""});
     });
   }catch{return false}
 }
@@ -657,8 +641,7 @@ function renderHome(root){
   <div id="params-panel" style="display:none;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px 16px;margin-top:10px">
     <div id="params-inner"></div>
   </div>
-  <div id="data-menu" style="margin-top:16px"></div>
-  <div id="history-section" style="margin-top:8px"></div>`;
+  <div id="history-section" style="margin-top:16px"></div>`;
 
   root.appendChild(el);
   // CSS global
@@ -755,81 +738,51 @@ function renderHome(root){
     APP.lastParams={...params};saveParams({...params});navigate("session",{sessionParams:{...params,_key:Date.now()}});
   };
 
-  // Menu données (toujours visible)
-  renderDataMenu(el.querySelector("#data-menu"),el.querySelector("#history-section"));
   // Historique
   renderHistorySection(el.querySelector("#history-section"));
-  function renderDataMenu(wrap, histSec){
-    let menuOpen=false;
-    function buildMenu(){
-      const connected=GDRIVE.enabled;
-      const email=GDRIVE.email;
-      wrap.innerHTML=`
-        <button class="btn-ghost" id="btn-data-toggle" style="width:100%;text-align:center;font-size:12px">
-          ${connected?"☁️ Drive connecté · ":"💾 "}Données &amp; Synchronisation ${menuOpen?"▲":"▼"}
-        </button>
-        <div id="data-panel" style="display:${menuOpen?"block":"none"};background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:14px 14px 10px;margin-top:8px">
-          <!-- Statut Drive -->
-          ${connected?`
-            <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:10px">
-              <div style="flex:1">
-                <div style="font-size:11px;color:#4ade80;font-weight:600">☁️ Google Drive connecté</div>
-                ${email?`<div style="font-size:10px;color:#475569;margin-top:2px">${email}</div>`:""}
-                <div style="font-size:10px;color:#475569;margin-top:1px">Sync automatique activée</div>
-              </div>
-              <button class="btn-ghost" id="btn-drive-off" style="font-size:11px;color:#ef4444;border-color:rgba(239,68,68,.2);padding:7px 11px;flex-shrink:0">Déconnecter</button>
-            </div>
-          `:`
-            <button class="btn-ghost" id="btn-drive-on" style="width:100%;font-size:12px;color:#818cf8;border-color:rgba(129,140,248,.25);margin-bottom:10px">
-              ☁️ Connecter Google Drive (sync auto)
-            </button>
-          `}
-          <!-- Export / Import -->
-          <div style="display:flex;gap:8px">
-            <button class="btn-ghost" id="btn-export" style="flex:1;font-size:11px">⬇ Export JSON</button>
-            <label class="btn-ghost" style="flex:1;font-size:11px;text-align:center;cursor:pointer">
-              ⬆ Import JSON
-              <input type="file" accept=".json" style="display:none" id="import-file">
-            </label>
-          </div>
-        </div>`;
-      wrap.querySelector("#btn-data-toggle").onclick=()=>{menuOpen=!menuOpen;buildMenu()};
-      if(connected){
-        wrap.querySelector("#btn-drive-off").onclick=()=>{
-          gdriveDisconnect();buildMenu();
-        };
-      }else{
-        wrap.querySelector("#btn-drive-on").onclick=async()=>{
-          try{
-            showToast("Connexion Google Drive…");
-            await gdriveConnect();
-            showToast("☁️ Drive connecté ✓");
-            await gdriveSave({history:APP.history,pseudo:APP.pseudo});
-            buildMenu();
-          }catch{showToast("Connexion annulée ou refusée")}
-        };
-      }
-      wrap.querySelector("#btn-export").onclick=()=>exportData({history:APP.history,pseudo:APP.pseudo});
-      wrap.querySelector("#import-file").onchange=e=>{
-        if(e.target.files[0])importData(e.target.files[0],d=>{
-          APP.history=d.history;APP.pseudo=d.pseudo||APP.pseudo;persist();render();
-        });
-      };
-    }
-    buildMenu();
-  }
-
   function renderHistorySection(sec){
     if(!APP.history.length){sec.innerHTML="";return}
-    sec.innerHTML="";
-    if(!APP.history.length)return;
     sec.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
       ${APP.history.length>=2?`<button class="btn-ghost" style="width:100%;color:#818cf8;border-color:rgba(129,140,248,.2);text-align:center" id="btn-global">📊 Statistiques globales</button>`:""}
       <button class="btn-ghost" style="width:100%;text-align:center" id="btn-hist">${histOpen?"▲ Masquer l'historique":"▼ Historique ("+APP.history.length+" séance"+(APP.history.length>1?"s":"")+")"}</button>
     </div>
-    <div id="hist-list"></div>`;
+    <div id="hist-list"></div>
+    <div id="data-actions" style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;gap:8px">
+        <button class="btn-ghost" style="flex:1;font-size:11px" id="btn-export">⬇ Export JSON</button>
+        <label class="btn-ghost" style="flex:1;font-size:11px;text-align:center;cursor:pointer">⬆ Import JSON<input type="file" accept=".json" style="display:none" id="import-file"></label>
+      </div>
+      <div id="drive-btn-wrap"></div>
+    </div>`;
     sec.querySelector("#btn-hist").onclick=()=>{histOpen=!histOpen;renderHistorySection(sec)};
     if(APP.history.length>=2)sec.querySelector("#btn-global").onclick=()=>navigate("global");
+    sec.querySelector("#btn-export").onclick=()=>exportData({history:APP.history,pseudo:APP.pseudo});
+    sec.querySelector("#import-file").onchange=e=>{
+      if(e.target.files[0])importData(e.target.files[0],d=>{APP.history=d.history;APP.pseudo=d.pseudo||APP.pseudo;persist();render()})
+    };
+    // Bouton Drive
+    const dw=sec.querySelector("#drive-btn-wrap");
+    if(dw){
+      if(GDRIVE.enabled){
+        dw.innerHTML=`<div style="display:flex;gap:8px;align-items:center">
+          <div style="flex:1;font-size:11px;color:#4ade80">☁️ Drive connecté — sync auto activée</div>
+          <button class="btn-ghost" style="font-size:11px;color:#ef4444;border-color:rgba(239,68,68,.2)" id="btn-drive-off">Déconnecter</button>
+        </div>`;
+        dw.querySelector("#btn-drive-off").onclick=()=>{gdriveDisconnect();renderHistorySection(sec)};
+      }else{
+        dw.innerHTML=`<button class="btn-ghost" style="width:100%;font-size:12px;color:#818cf8;border-color:rgba(129,140,248,.25)" id="btn-drive-on">☁️ Connecter Google Drive (sync auto)</button>`;
+        dw.querySelector("#btn-drive-on").onclick=async()=>{
+          try{
+            showToast("Connexion Google Drive…");
+            await gdriveConnect();
+            showToast("☁️ Drive connecté ✓");
+            // Sauvegarder immédiatement
+            await gdriveSave({history:APP.history,pseudo:APP.pseudo});
+            renderHistorySection(sec);
+          }catch(e){showToast("Connexion annulée ou refusée")}
+        };
+      }
+    }
     if(!histOpen)return;
     const list=sec.querySelector("#hist-list");
     list.innerHTML=[...APP.history].reverse().map((s,ri)=>{
