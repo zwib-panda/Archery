@@ -12,7 +12,10 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow-x:hidden;background:#07090f;color:#f8fafc;font-family:'DM Mono',monospace}
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;700&family=Syne:wght@700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;700&family=Figtree:wght@700;800;900&display=swap');
+[style*="font-family:'Figtree'"]{letter-spacing:-.3px;line-height:1.15}
+.btn-primary{letter-spacing:.2px;line-height:1.2}
+body{-webkit-font-smoothing:antialiased}
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
 input,button{font-family:inherit}
@@ -24,7 +27,7 @@ input:focus{outline:none}
 .pop-in{animation:popIn .2s cubic-bezier(.34,1.56,.64,1) forwards}
 .page{width:100%;max-width:420px;margin:0 auto;padding:0 18px 80px}
 /* Buttons */
-.btn-primary{background:linear-gradient(135deg,#F97316,#DC5A08);color:#fff;border:none;border-radius:13px;font-family:'Syne',sans-serif;font-weight:800;font-size:15px;cursor:pointer;transition:transform .12s,box-shadow .12s;box-shadow:0 4px 18px rgba(249,115,22,.38);padding:14px 0;width:100%}
+.btn-primary{background:linear-gradient(135deg,#F97316,#DC5A08);color:#fff;border:none;border-radius:13px;font-family:'Figtree',sans-serif;font-weight:800;font-size:15px;cursor:pointer;transition:transform .12s,box-shadow .12s;box-shadow:0 4px 18px rgba(249,115,22,.38);padding:14px 0;width:100%}
 .btn-primary:active{transform:scale(.97)}
 .btn-primary:disabled{opacity:.3;pointer-events:none}
 .btn-ghost{background:rgba(255,255,255,.05);color:#94a3b8;border:1px solid rgba(255,255,255,.09);border-radius:11px;font-size:12px;font-weight:500;cursor:pointer;transition:background .15s,color .15s;padding:10px 14px}
@@ -42,7 +45,7 @@ input:focus{outline:none}
 .stepper{display:flex;align-items:center;gap:10px}
 .stepper button{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:9px;color:#f8fafc;font-size:18px;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .stepper button:active{background:rgba(255,255,255,.15)}
-.stepper .val{font-family:'Syne',sans-serif;font-weight:900;font-size:22px;color:#F97316;min-width:28px;text-align:center}
+.stepper .val{font-family:'Figtree',sans-serif;font-weight:900;font-size:22px;color:#F97316;min-width:28px;text-align:center}
 /* Popup */
 .popup-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:flex-end;justify-content:center}
 .popup-box{background:#0f172a;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:420px;border-top:1px solid rgba(255,255,255,.1)}
@@ -112,6 +115,8 @@ function saveData(data){
   try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}
   catch(e){showToast("Erreur sauvegarde locale")}
 }
+function saveParams(p){try{localStorage.setItem(STORAGE_KEY+'_params',JSON.stringify(p))}catch{}}
+function loadParams(){try{const d=localStorage.getItem(STORAGE_KEY+'_params');return d?JSON.parse(d):null}catch{return null}}
 function exportData(data){
   const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
   const url=URL.createObjectURL(blob);
@@ -293,7 +298,7 @@ function showPopup(title,body){
   const back=document.createElement("div");back.className="popup-backdrop";
   const box=document.createElement("div");box.className="popup-box pop-in";
   box.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:16px">${title}</div>
+    <div style="font-family:'Figtree',sans-serif;font-weight:800;font-size:16px">${title}</div>
     <button class="btn-icon" id="popup-close">✕</button>
   </div><div style="font-size:13px;color:#94a3b8;line-height:1.6">${body}</div>`;
   back.appendChild(box);document.body.appendChild(back);
@@ -309,7 +314,7 @@ function buildStatsBlock(st,container){
   if(!st){container.innerHTML='<div style="color:#475569;text-align:center;padding:20px">Pas assez de données</div>';return}
   function card(html,extra=""){return`<div class="card" style="margin-bottom:10px${extra?";"+extra:""}">${html}</div>`}
   function lbl(t){return`<div class="lbl">${t}</div>`}
-  function kpi(l,v,accent,big){return`<div class="card"><div class="lbl">${l}</div><div style="font-family:'Syne',sans-serif;font-weight:900;font-size:${big?28:22}px;color:${accent};line-height:1.1">${v}</div></div>`}
+  function kpi(l,v,accent,big){return`<div class="card"><div class="lbl">${l}</div><div style="font-family:'Figtree',sans-serif;font-weight:900;font-size:${big?28:22}px;color:${accent};line-height:1.1">${v}</div></div>`}
   // KPI grid
   let html=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
     ${kpi("Moy. / flèche",st.avgPerArrow,"#F97316",true)}
@@ -321,19 +326,19 @@ function buildStatsBlock(st,container){
   html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
     <div class="card" style="cursor:pointer" onclick="showPopup('Écart-type groupement','Mesure la dispersion moyenne des impacts autour du centre. Un écart faible (ex: 5 cm) signifie que tes flèches sont groupées serrées. Un écart élevé (ex: 20 cm) indique une dispersion importante. Objectif : réduire progressivement cet écart.')">
       <div class="lbl">Groupement σ ℹ️</div>
-      <div style="font-family:'Syne',sans-serif;font-weight:900;font-size:22px;color:#64748b">${st.stdGroupCm} cm</div>
+      <div style="font-family:'Figtree',sans-serif;font-weight:900;font-size:22px;color:#64748b">${st.stdGroupCm} cm</div>
     </div>
     <div class="card" style="cursor:pointer" onclick="showPopup('Diamètre du groupe','Distance maximale entre deux impacts dans la séance. Donne une idée du cercle minimum qui contiendrait toutes tes flèches. Plus il est petit, plus ton groupement est serré.')">
       <div class="lbl">Diam. groupe ℹ️</div>
-      <div style="font-family:'Syne',sans-serif;font-weight:900;font-size:22px;color:#64748b">${st.maxPairDist} cm</div>
+      <div style="font-family:'Figtree',sans-serif;font-weight:900;font-size:22px;color:#64748b">${st.maxPairDist} cm</div>
     </div>
     <div class="card" style="cursor:pointer" onclick="showPopup('Régularité (σ volées)','Écart-type des moyennes par volée. Ex: si tu fais 7/fl, 7.2/fl, 6.9/fl → σ faible = très régulier. Si tu fais 9/fl puis 5/fl → σ élevé = irrégulier. Objectif : σ < 0.8 pour un niveau avancé.')">
       <div class="lbl">Régularité σ ℹ️</div>
-      <div style="font-family:'Syne',sans-serif;font-weight:900;font-size:22px;color:#64748b">${st.regularitySigma}</div>
+      <div style="font-family:'Figtree',sans-serif;font-weight:900;font-size:22px;color:#64748b">${st.regularitySigma}</div>
     </div>
     <div class="card" style="cursor:pointer" onclick="showPopup('Dispersion verticale (σY) et horizontale (σX)','Mesure séparément ta dispersion de haut en bas (Y) et de gauche à droite (X). Si σY >> σX : tu varies plus en hauteur qu\\'en largeur → problème de tension ou de relâcher. Si σX >> σY : tu varies plus latéralement → problème de rotation ou de visée.')">
       <div class="lbl">σX / σY ℹ️</div>
-      <div style="font-family:'Syne',sans-serif;font-weight:900;font-size:22px;color:#64748b">${st.regularityX} / ${st.regularityY} cm</div>
+      <div style="font-family:'Figtree',sans-serif;font-weight:900;font-size:22px;color:#64748b">${st.regularityX} / ${st.regularityY} cm</div>
     </div>
   </div>`;
   // Biais
@@ -372,7 +377,7 @@ function buildStatsBlock(st,container){
         <div style="font-size:12px;color:#94a3b8;margin-top:2px">
           ${tv>1?"📈 Progression":"📉 Baisse"} ${Math.abs(tv)>1?"":"➡️ Stable"}
         </div></div>
-      <div style="font-family:'Syne',sans-serif;font-weight:900;font-size:22px;color:${tv>1?"#4ade80":tv<-1?"#f87171":"#94a3b8"}">
+      <div style="font-family:'Figtree',sans-serif;font-weight:900;font-size:22px;color:${tv>1?"#4ade80":tv<-1?"#f87171":"#94a3b8"}">
         ${tv>0?"+":""}${st.trend}%
       </div>
     </div>`;
@@ -390,11 +395,11 @@ function buildStatsBlock(st,container){
   if(st.bestV||st.worstV){
     html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
       <div class="card"><div class="lbl">Meilleure volée</div>
-        <div style="font-family:'Syne',sans-serif;font-weight:900;font-size:24px;color:#4ADE80">${st.bestV?normalizeVolley(st.bestV).toFixed(1)+"/30":"—"}</div>
+        <div style="font-family:'Figtree',sans-serif;font-weight:900;font-size:24px;color:#4ADE80">${st.bestV?normalizeVolley(st.bestV).toFixed(1)+"/30":"—"}</div>
         <div style="font-size:9px;color:#475569">${st.bestV?`#${st.bestV.num} · ${st.bestV.arrows.length}fl`:""}</div>
       </div>
       <div class="card"><div class="lbl">Pire volée</div>
-        <div style="font-family:'Syne',sans-serif;font-weight:900;font-size:24px;color:#f87171">${st.worstV?normalizeVolley(st.worstV).toFixed(1)+"/30":"—"}</div>
+        <div style="font-family:'Figtree',sans-serif;font-weight:900;font-size:24px;color:#f87171">${st.worstV?normalizeVolley(st.worstV).toFixed(1)+"/30":"—"}</div>
         <div style="font-size:9px;color:#475569">${st.worstV?`#${st.worstV.num} · ${st.worstV.arrows.length}fl`:""}</div>
       </div>
     </div>`;
@@ -443,6 +448,7 @@ let APP={history:[],pseudo:"",screen:"home",sessionParams:null,lastSession:null,
 
 function loadApp(){
   const d=loadData();APP.history=d.history||[];APP.pseudo=d.pseudo||"";
+  APP.lastParams=loadParams()||{distance:"18 m",target:"WA 122cm",bowType:"Recurve",arrowCount:6,note:""};
   render();
 }
 function persist(){saveData({history:APP.history,pseudo:APP.pseudo})}
@@ -470,7 +476,7 @@ function renderHome(root){
   el.innerHTML=`
   <div style="padding:28px 0 20px;text-align:center">
     <div style="font-size:34px;margin-bottom:4px">🏹</div>
-    <div style="font-family:'Syne',sans-serif;font-size:23px;font-weight:900;letter-spacing:-.5px">ArcheryLog</div>
+    <div style="font-family:'Figtree',sans-serif;font-size:23px;font-weight:900;letter-spacing:-.5px">ArcheryLog</div>
     <div id="pseudo-line" style="font-size:12px;color:#475569;margin-top:4px;cursor:pointer"></div>
   </div>
   <div id="last-session-card"></div>
@@ -509,7 +515,7 @@ function renderHome(root){
           <div style="font-size:10px;color:#64748b;margin-top:2px">${last.volleys.length} volées · ${last.totalArrows} fl.</div>
         </div>
         <div style="text-align:right">
-          <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:900;color:#F97316">${st?.avgPerArrow||"—"}</div>
+          <div style="font-family:'Figtree',sans-serif;font-size:20px;font-weight:900;color:#F97316">${st?.avgPerArrow||"—"}</div>
           <div style="font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.8px">moy/flèche</div>
           <div style="font-size:11px;color:#818cf8;margin-top:2px">${st?.avgDistCm||"—"} cm</div>
         </div>
@@ -573,16 +579,16 @@ function renderHome(root){
 
   // Start
   el.querySelector("#btn-start").onclick=()=>{
-    APP.lastParams={...params};navigate("session",{sessionParams:{...params,_key:Date.now()}});
+    APP.lastParams={...params};saveParams({...params});navigate("session",{sessionParams:{...params,_key:Date.now()}});
   };
 
   // Historique
   renderHistorySection(el.querySelector("#history-section"));
   function renderHistorySection(sec){
     if(!APP.history.length){sec.innerHTML="";return}
-    sec.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-      <button class="btn-ghost" style="flex:1" id="btn-hist">${histOpen?"▲ Masquer l'historique":"▼ Historique ("+APP.history.length+" séance"+(APP.history.length>1?"s":"")+")"}</button>
-      ${APP.history.length>=2?`<button class="btn-ghost" style="color:#818cf8;border-color:rgba(129,140,248,.2)" id="btn-global">📊 Stats</button>`:""}
+    sec.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
+      ${APP.history.length>=2?`<button class="btn-ghost" style="width:100%;color:#818cf8;border-color:rgba(129,140,248,.2);text-align:center" id="btn-global">📊 Statistiques globales</button>`:""}
+      <button class="btn-ghost" style="width:100%;text-align:center" id="btn-hist">${histOpen?"▲ Masquer l'historique":"▼ Historique ("+APP.history.length+" séance"+(APP.history.length>1?"s":"")+")"}</button>
     </div>
     <div id="hist-list"></div>
     <div id="data-actions" style="margin-top:12px;display:flex;gap:8px">
@@ -609,7 +615,7 @@ function renderHome(root){
             <div id="curve-${idx}" style="margin-top:6px"></div>
           </div>
           <div style="text-align:right;min-width:52px">
-            <div style="font-family:'Syne',sans-serif;font-size:19px;font-weight:900;color:#F97316">${st?.avgPerArrow||"—"}</div>
+            <div style="font-family:'Figtree',sans-serif;font-size:19px;font-weight:900;color:#F97316">${st?.avgPerArrow||"—"}</div>
             <div style="font-size:9px;color:#64748b">moy/fl.</div>
             <div style="font-size:11px;color:#818cf8;margin-top:1px">${st?.avgDistCm||"—"} cm</div>
           </div>
@@ -638,14 +644,16 @@ function renderDetail(root){
   let confirmDel=false;
   const el=document.createElement("div");el.className="page fade-up";
   el.innerHTML=`
-    <div style="display:flex;align-items:center;gap:10px;margin:18px 0 18px">
-      <button class="btn-ghost" id="btn-back">←</button>
-      <div style="flex:1">
-        <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:900">${s.date}</div>
-        <div style="font-size:10px;color:#475569;margin-top:1px">${s.params?.distance||""} · ${s.params?.target||""} · ${s.params?.bowType||""}${s.params?.note?" · "+s.params.note:""}</div>
-        <div style="font-size:10px;color:#64748b;margin-top:1px">${s.volleys.length} volées · ${s.totalArrows} fl. · 🚶 ${distMarche}m</div>
+    <div style="margin:18px 0 14px">
+      <div style="display:grid;grid-template-columns:20% 1fr 20%;align-items:center;gap:6px;margin-bottom:10px">
+        <button class="btn-ghost" id="btn-back" style="width:100%;text-align:center;padding:9px 0">←</button>
+        <div style="text-align:center;overflow:hidden">
+          <div style="font-family:'Figtree',sans-serif;font-size:16px;font-weight:900;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.date}</div>
+        </div>
+        <button class="btn-ghost" id="btn-del" style="width:100%;text-align:center;padding:9px 0;color:#ef4444;border-color:rgba(239,68,68,.2)">🗑</button>
       </div>
-      <button class="btn-ghost" id="btn-del" style="color:#ef4444;border-color:rgba(239,68,68,.2)">🗑</button>
+      <div style="font-size:11px;color:#475569;text-align:center">${s.params?.distance||""} · ${s.params?.target||""} · ${s.params?.bowType||""}${s.params?.note?' · '+s.params.note:''}</div>
+      <div style="font-size:10px;color:#64748b;margin-top:3px;text-align:center">${s.volleys.length} volées · ${s.totalArrows} fl. · 🚶 ${distMarche}m</div>
     </div>
     <div id="del-confirm" style="display:none;margin-bottom:10px;display:none">
       <div style="font-size:12px;color:#ef4444;margin-bottom:8px">Supprimer cette séance ?</div>
@@ -680,7 +688,7 @@ function renderGlobal(root){
   el.innerHTML=`
     <div style="display:flex;align-items:center;gap:10px;margin:18px 0 20px">
       <button class="btn-ghost" id="btn-back">←</button>
-      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:900">Statistiques globales</div>
+      <div style="font-family:'Figtree',sans-serif;font-size:18px;font-weight:900">Statistiques globales</div>
     </div>
     <div id="global-content"></div>`;
   root.appendChild(el);
@@ -706,7 +714,7 @@ function renderGlobal(root){
     </div>
     <div class="card" style="margin-bottom:12px">
       <div class="lbl">Meilleure séance</div>
-      <div style="font-family:'Syne',sans-serif;font-weight:900;font-size:20px;color:#4ade80">${APP.history[bestIdx]?.date}</div>
+      <div style="font-family:'Figtree',sans-serif;font-weight:900;font-size:20px;color:#4ade80">${APP.history[bestIdx]?.date}</div>
       <div style="font-size:11px;color:#64748b;margin-top:3px">${APP.history[bestIdx]?.params?.distance} · ${avgs[bestIdx].toFixed(2)}/fl</div>
     </div>
     <div class="card" style="margin-bottom:12px">
@@ -748,42 +756,66 @@ function renderGlobal(root){
     container.querySelectorAll("[data-months]").forEach(btn=>{
       btn.onclick=()=>{p=parseInt(btn.dataset.months);buildGlobalContent(container,p,agO)};
     });
-    // calcul agrégé
+    // calcul agrégé — filtrage par date réelle via s.id (timestamp ms)
     if(agO){
       const cutoff=new Date();cutoff.setMonth(cutoff.getMonth()-p);
-      // On ne filtre pas par date réelle (données de démo n'ont pas de timestamp)
-      // On prend les N dernières séances proportionnellement
-      const nSessions=Math.max(1,Math.ceil(APP.history.length*(p/12)));
-      const sliced=APP.history.slice(-nSessions);
-      const aggrVolleys=sliced.flatMap(s=>s.volleys);
-      const aggrTarget=sliced[0]?.params?.target||"WA 122cm";
-      const aggrSt=computeStats(aggrVolleys,aggrTarget);
+      const cutoffMs=cutoff.getTime();
+      // Filtrer les sessions dans la période ; les sessions sans id (importées) sont incluses si récentes
+      const sliced=APP.history.filter(s=>!s.id||s.id>=cutoffMs);
       const aggrDiv=container.querySelector("#aggr-stats");
-      aggrDiv.innerHTML=`<div style="font-size:11px;color:#64748b;margin-bottom:10px">${sliced.length} séances · ${aggrVolleys.length} volées · ${aggrVolleys.flatMap(v=>v.arrows).length} flèches</div>`;
-      buildStatsBlock(aggrSt,aggrDiv);
+      if(sliced.length===0){
+        aggrDiv.innerHTML='<div style="color:#475569;font-size:12px;text-align:center;padding:16px">Aucune séance sur cette période.</div>';
+      } else {
+        const aggrVolleys=sliced.flatMap(s=>s.volleys);
+        const aggrTarget=sliced[0]?.params?.target||"WA 122cm";
+        const aggrSt=computeStats(aggrVolleys,aggrTarget);
+        const totalFl=aggrVolleys.flatMap(v=>v.arrows).length;
+        // KPIs période : Séances → Volées → Flèches → Moy/fl → Dist mouche → Marche
+        const distTot=sliced.reduce((s,h)=>s+h.volleys.length*2*parseInt(h.params?.distance||18),0);
+        aggrDiv.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div class="card"><div class="lbl">Séances</div><div style="font-family:'Figtree',sans-serif;font-weight:900;font-size:26px;color:#94a3b8">${sliced.length}</div></div>
+          <div class="card"><div class="lbl">Volées</div><div style="font-family:'Figtree',sans-serif;font-weight:900;font-size:26px;color:#94a3b8">${aggrVolleys.length}</div></div>
+          <div class="card"><div class="lbl">Flèches</div><div style="font-family:'Figtree',sans-serif;font-weight:900;font-size:26px;color:#94a3b8">${totalFl}</div></div>
+          <div class="card"><div class="lbl">Moy. / flèche</div><div style="font-family:'Figtree',sans-serif;font-weight:900;font-size:26px;color:#F97316">${aggrSt?.avgPerArrow||"—"}</div></div>
+          <div class="card"><div class="lbl">Dist. moy. mouche</div><div style="font-family:'Figtree',sans-serif;font-weight:900;font-size:26px;color:#818cf8">${aggrSt?.avgDistCm||"—"} cm</div></div>
+          <div class="card"><div class="lbl">🚶 Distance marchée</div><div style="font-family:'Figtree',sans-serif;font-weight:900;font-size:26px;color:#4ade80">${distTot} m</div></div>
+        </div>`;
+        // buildStatsBlock écrit dans un conteneur séparé pour ne pas écraser les KPIs
+        const aggrStatsContainer=document.createElement("div");
+        aggrDiv.appendChild(aggrStatsContainer);
+        buildStatsBlock(aggrSt,aggrStatsContainer);
+      }
     }
-    // all sessions table
+    // all sessions — même format riche que l'historique accueil
     const allDiv=container.querySelector("#all-sessions");
-    allDiv.innerHTML=[...APP.history].reverse().map((s,ri)=>{
+    allDiv.innerHTML="";
+    [...APP.history].reverse().forEach((s,ri)=>{
       const idx2=APP.history.length-1-ri;
       const st2=allStats[idx2]?.st;
-      return`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer" data-idx="${idx2}">
+      const distM=s.volleys.length*2*parseInt(s.params?.distance||18);
+      const card=document.createElement("div");
+      card.style.cssText="margin-bottom:10px;cursor:pointer";card.className="card";
+      card.dataset.idx=idx2;
+      card.innerHTML=`<div style="display:flex;align-items:flex-start;gap:10px">
         <div style="flex:1">
-          <div style="font-size:11px;color:#94a3b8">${s.date}</div>
-          <div style="font-size:9px;color:#475569">${s.params?.distance||""} · ${s.params?.target||""}</div>
+          <div style="font-size:12px;color:#94a3b8;font-weight:600">${s.date}</div>
+          <div style="font-size:10px;color:#475569;margin-top:2px">${s.params?.distance||""} · ${s.params?.target||""} · ${s.params?.bowType||""}</div>
+          <div style="font-size:10px;color:#334155;margin-top:1px">${s.volleys.length} volées · ${s.totalArrows} fl. · 🚶 ${distM}m</div>
+          <div id="gcurve-${idx2}" style="margin-top:6px"></div>
         </div>
-        <div style="text-align:right">
-          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:#F97316">${st2?.avgPerArrow||"—"}</div>
-          <div style="font-size:9px;color:#818cf8">${st2?.avgDistCm||"—"} cm</div>
+        <div style="text-align:right;min-width:52px">
+          <div style="font-family:'Figtree',sans-serif;font-size:19px;font-weight:900;color:#F97316">${st2?.avgPerArrow||"—"}</div>
+          <div style="font-size:9px;color:#64748b">moy/fl.</div>
+          <div style="font-size:11px;color:#818cf8;margin-top:1px">${st2?.avgDistCm||"—"} cm</div>
         </div>
       </div>`;
-    }).join("");
-    allDiv.querySelectorAll("[data-idx]").forEach(row=>{
-      const idx2=parseInt(row.dataset.idx);
-      row.onclick=()=>navigate("detail",{detailSession:APP.history[idx2],detailIdx:idx2});
+      card.onclick=()=>navigate("detail",{detailSession:APP.history[idx2],detailIdx:idx2});
+      allDiv.appendChild(card);
+      // courbe compacte
+      if(st2?.vAvgs){const c=buildCurve(st2.vAvgs,260,32);if(c){const ph=card.querySelector("#gcurve-"+idx2);if(ph)ph.appendChild(c)}}
     });
   }
-  function kpi2(l,v,accent,big){return`<div class="card"><div class="lbl">${l}</div><div style="font-family:'Syne',sans-serif;font-weight:900;font-size:${big?28:22}px;color:${accent};line-height:1.1">${v}</div></div>`}
+  function kpi2(l,v,accent,big){return`<div class="card"><div class="lbl">${l}</div><div style="font-family:'Figtree',sans-serif;font-weight:900;font-size:${big?28:22}px;color:${accent};line-height:1.1">${v}</div></div>`}
 }
 
 // ── SESSION ──────────────────────────────────────────────────────
@@ -793,23 +825,28 @@ function renderSession(root){
   const isTrispot=params.target==="Trispot";
   const SIZE=Math.min(window.innerWidth-56,300);
   const R_SVG=SIZE/2-2;
-  let volleys=[],currentArrows=[],selectedIdx=null,volleyNum=1,maxArrows=params.arrowCount,editingVolley=null;
+  // Restaurer les volleys si on reprend une séance
+  const initVolleys=APP.resumeVolleys||[];
+  APP.resumeVolleys=null; // consommer
+  let volleys=[...initVolleys],currentArrows=[],selectedIdx=null;
+  let volleyNum=initVolleys.length>0?Math.max(...initVolleys.map(v=>v.num))+1:1;
+  let maxArrows=params.arrowCount,editingVolley=null;
   const el=document.createElement("div");el.className="page fade-up";
   el.style.paddingBottom="60px";
   el.innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:14px 0 8px">
       <div>
-        <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:900" id="volley-title">🏹 Volée <span style="color:#F97316">#1</span></div>
+        <div style="font-family:'Figtree',sans-serif;font-size:18px;font-weight:900" id="volley-title">🏹 Volée <span style="color:#F97316">#1</span></div>
         <div style="font-size:10px;color:#475569;margin-top:1px">${params.distance} · ${params.target} · ${params.bowType}</div>
       </div>
       <div style="text-align:right">
         <div style="font-size:9px;color:#334155;text-transform:uppercase;letter-spacing:1px">Total</div>
-        <div id="total-score" style="font-family:'Syne',sans-serif;font-size:22px;font-weight:900;color:#F5C400;line-height:1.1">0</div>
+        <div id="total-score" style="font-family:'Figtree',sans-serif;font-size:22px;font-weight:900;color:#F5C400;line-height:1.1">0</div>
         <div id="avg-display" style="font-size:9px;color:#475569">—/fl</div>
       </div>
     </div>
     <div id="progress-bar" style="display:flex;gap:5px;align-items:center;margin-bottom:10px"></div>
-    <div style="display:flex;justify-content:center;padding:0 6px;position:relative" id="target-wrap"></div>
+    <div class="target-wrap" style="display:flex;justify-content:center;padding:0 6px;position:relative" id="target-wrap"></div>
     <div id="hint" style="text-align:center;font-size:10px;color:#334155;margin-top:8px">Touchez le blason pour placer une flèche</div>
     <div id="scores-row" style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;padding:10px 0 0"></div>
     <div id="actions" style="display:flex;gap:8px;margin-top:12px"></div>
@@ -826,7 +863,7 @@ function renderSession(root){
   // Magnifier
   const magDiv=document.createElement("div");
   magDiv.style.cssText="position:absolute;top:-160px;left:50%;transform:translateX(-50%);pointer-events:none;z-index:30;display:none;flex-direction:column;align-items:center";
-  const MAG_W=130,MAG_H=130,WINDOW=R*0.255;
+  const MAG_W=169,MAG_H=150,WINDOW=R*0.232; // +30% W, +15% H, +10% zoom
   magDiv.innerHTML=`<div style="background:#0a0f1c;border-radius:18px;padding:5px;box-shadow:0 12px 40px rgba(0,0,0,.7);border:2px solid rgba(255,255,255,.13)">
     <svg id="mag-svg" width="${MAG_W}" height="${MAG_H}" style="display:block;border-radius:13px;overflow:hidden"></svg>
     <div id="mag-label" style="text-align:center;font-size:12px;font-weight:700;padding:5px 4px 3px;letter-spacing:.5px"></div>
@@ -941,19 +978,24 @@ function renderSession(root){
     el.querySelector("#volley-title").innerHTML=editingVolley!==null
       ?`🏹 Édition <span style="color:#F97316">#${volleys[editingVolley]?.num}</span>`
       :`🏹 Volée <span style="color:#F97316">#${volleyNum}</span>`;
-    // progress
+    // progress — pastilles flèches + compteur + +1
     const pb=el.querySelector("#progress-bar");
     pb.innerHTML="";
+    // Pastilles colorées (une par flèche)
+    const dots=document.createElement("div");
+    dots.style.cssText="display:flex;gap:5px;align-items:center;flex:1;flex-wrap:wrap";
     for(let i=0;i<maxArrows;i++){
       const d=document.createElement("div");
-      d.style.cssText=`flex:1;height:4px;border-radius:2px;background:${i<currentArrows.length?"#F97316":"rgba(255,255,255,.07)"};transition:background .2s`;
-      pb.appendChild(d);
+      const filled=i<currentArrows.length;
+      d.style.cssText=`width:10px;height:10px;border-radius:50%;flex-shrink:0;transition:background .2s,transform .15s;background:${filled?"#F97316":"rgba(255,255,255,.1)"};transform:${filled?"scale(1.15)":"scale(1)"}`;
+      dots.appendChild(d);
     }
+    pb.appendChild(dots);
     const cnt=document.createElement("span");
-    cnt.style.cssText="font-size:10px;color:#475569;margin-left:4px;white-space:nowrap";
+    cnt.style.cssText="font-size:11px;color:#475569;margin-left:6px;white-space:nowrap;flex-shrink:0";
     cnt.textContent=`${currentArrows.length}/${maxArrows}`;pb.appendChild(cnt);
-    const plus=document.createElement("button");plus.className="btn-ghost";
-    plus.style.cssText="padding:2px 7px;font-size:11px;border-radius:7px;margin-left:4px;color:#4ade80;border-color:rgba(74,222,128,.22)";
+    const plus=document.createElement("button");
+    plus.style.cssText="padding:2px 9px;font-size:12px;border-radius:8px;margin-left:6px;color:#4ade80;border:1px solid rgba(74,222,128,.25);background:rgba(74,222,128,.07);cursor:pointer;flex-shrink:0";
     plus.textContent="+1";plus.onclick=()=>{maxArrows++;updateUI()};pb.appendChild(plus);
     // pins
     renderPins();
@@ -973,7 +1015,7 @@ function renderSession(root){
     });
     if(currentArrows.length>0){
       const tot=document.createElement("span");
-      tot.style.cssText="display:inline-flex;align-items:center;height:34px;padding:0 10px;border-radius:9px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.28);font-family:'Syne',sans-serif;font-weight:800;font-size:15px;color:#F97316";
+      tot.style.cssText="display:inline-flex;align-items:center;height:34px;padding:0 10px;border-radius:9px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.28);font-family:'Figtree',sans-serif;font-weight:800;font-size:15px;color:#F97316";
       tot.textContent="= "+currentScore();sr.appendChild(tot);
     }
     // hint
@@ -1017,7 +1059,7 @@ function renderSession(root){
               color:${a.score==="X"?"#1a1000":n2>=9?"#F5C400":n2>=7?"#fca5a5":n2>=5?"#93c5fd":"#94a3b8"}">${a.score===0?"P":a.score}</span>`;
           }).join("")}</div>
           <div style="font-size:9px;color:#475569;margin-right:4px">${(v.score/v.arrows.length).toFixed(1)}/fl</div>
-          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:#F5C400">${v.score}</div>`;
+          <div style="font-family:'Figtree',sans-serif;font-weight:800;font-size:16px;color:#F5C400">${v.score}</div>`;
         row.onclick=()=>{
           if(currentArrows.length>0&&editingVolley!==idx&&!confirm("Abandonner la volée en cours ?"))return;
           currentArrows=[...v.arrows];maxArrows=v.expectedSize||params.arrowCount;editingVolley=idx;selectedIdx=null;updateUI();
@@ -1073,7 +1115,7 @@ function renderSummary(root){
   const el=document.createElement("div");el.className="page fade-up";
   el.innerHTML=`
     <div style="margin:20px 0 20px">
-      <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:900">Résumé de séance</div>
+      <div style="font-family:'Figtree',sans-serif;font-size:22px;font-weight:900">Résumé de séance</div>
       <div style="font-size:11px;color:#475569;margin-top:3px">${s.date} · ${s.params?.distance} · ${s.params?.target} · ${s.params?.bowType}</div>
       <div style="font-size:11px;color:#64748b;margin-top:2px">${s.volleys.length} volée${s.volleys.length!==1?"s":""} · ${s.totalArrows} flèches · 🚶 ${distMarche}m parcourus</div>
     </div>
@@ -1086,8 +1128,8 @@ function renderSummary(root){
   root.appendChild(el);
   buildStatsBlock(st,el.querySelector("#summary-stats"));
   el.querySelector("#btn-resume").onclick=()=>{
-    // Reprendre : relancer la session avec les données actuelles
-    navigate("session",{sessionParams:{...s.params,_key:s.id}});
+    // Reprendre : relancer la session EN RESTAURANT les volées
+    navigate("session",{sessionParams:{...s.params,_key:s.id},resumeVolleys:[...s.volleys]});
   };
   el.querySelector("#btn-new").onclick=()=>navigate("home");
   el.querySelector("#btn-home").onclick=()=>navigate("home");
@@ -1097,11 +1139,15 @@ function renderSummary(root){
 // STYLES GLOBAUX
 // ═══════════════════════════════════════════════════════════════════
 document.head.insertAdjacentHTML("beforeend",`<style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;700&family=Syne:wght@700;800;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;700&family=Figtree:wght@700;800;900&display=swap');
+[style*="font-family:'Figtree'"]{letter-spacing:-.3px;line-height:1.15}
+.btn-primary{letter-spacing:.2px;line-height:1.2}
+body{-webkit-font-smoothing:antialiased}
   .btn-primary{display:block;text-align:center}
   .btn-ghost{display:block;text-align:center;width:100%}
   .stepper button{font-size:18px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:9px;color:#f8fafc;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center}
-  svg{touch-action:none}
+  svg{touch-action:none;user-select:none;-webkit-user-select:none}
+.target-wrap{user-select:none;-webkit-user-select:none}
 </style>`);
 
 // ═══════════════════════════════════════════════════════════════════
