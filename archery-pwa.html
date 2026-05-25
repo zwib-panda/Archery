@@ -137,6 +137,138 @@ function importData(file,onDone){
   r.readAsText(file);
 }
 
+
+// ═══════════════════════════════════════════════════════════════════
+// BLOC 2b — GOOGLE DRIVE SYNC
+// ═══════════════════════════════════════════════════════════════════
+const GDRIVE={
+  CLIENT_ID:"728442519272-6c2vo6c6q2abk8009btqhj4sn4fn0nnf.apps.googleusercontent.com",
+  SCOPES:"https://www.googleapis.com/auth/drive.appdata",
+  FILENAME:"archerylog_backup.json",
+  token:null,
+  fileId:null,
+  enabled:false,
+};
+
+// Charger le SDK Google Identity Services
+function loadGisScript(){
+  return new Promise(resolve=>{
+    if(window.google?.accounts){resolve();return}
+    const s=document.createElement("script");
+    s.src="https://accounts.google.com/gsi/client";
+    s.onload=resolve;document.head.appendChild(s);
+  });
+}
+
+// Initialiser le token OAuth2 (popup)
+async function gdriveConnect(){
+  try{
+    await loadGisScript();
+    return new Promise((resolve,reject)=>{
+      const client=google.accounts.oauth2.initTokenClient({
+        client_id:GDRIVE.CLIENT_ID,
+        scope:GDRIVE.SCOPES,
+        callback:resp=>{
+          if(resp.error){reject(resp.error);return}
+          GDRIVE.token=resp.access_token;
+          GDRIVE.enabled=true;
+          localStorage.setItem("gdrive_enabled","1");
+          resolve(resp.access_token);
+        }
+      });
+      client.requestAccessToken({prompt:"consent"});
+    });
+  }catch(e){showToast("Erreur connexion Google ✗");throw e}
+}
+
+// Déconnecter
+function gdriveDisconnect(){
+  if(GDRIVE.token)google?.accounts?.oauth2?.revoke(GDRIVE.token,()=>{});
+  GDRIVE.token=null;GDRIVE.fileId=null;GDRIVE.enabled=false;
+  localStorage.removeItem("gdrive_enabled");
+  showToast("Google Drive déconnecté");
+}
+
+// Trouver le fichier de backup dans appDataFolder
+async function gdriveFindFile(){
+  const resp=await fetch(
+    "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id,name)&q=name='"+GDRIVE.FILENAME+"'",
+    {headers:{Authorization:"Bearer "+GDRIVE.token}}
+  );
+  const data=await resp.json();
+  if(data.files&&data.files.length>0){GDRIVE.fileId=data.files[0].id;return data.files[0].id}
+  return null;
+}
+
+// Lire le backup depuis Drive
+async function gdriveLoad(){
+  try{
+    const fid=await gdriveFindFile();
+    if(!fid)return null;
+    const resp=await fetch(
+      "https://www.googleapis.com/drive/v3/files/"+fid+"?alt=media",
+      {headers:{Authorization:"Bearer "+GDRIVE.token}}
+    );
+    const data=await resp.json();
+    return data;
+  }catch(e){console.error("Drive load error",e);return null}
+}
+
+// Sauvegarder sur Drive (créer ou mettre à jour)
+async function gdriveSave(data){
+  if(!GDRIVE.enabled||!GDRIVE.token)return;
+  try{
+    const body=JSON.stringify(data);
+    const fid=GDRIVE.fileId||await gdriveFindFile();
+    let resp;
+    if(fid){
+      // Mise à jour
+      resp=await fetch("https://www.googleapis.com/upload/drive/v3/files/"+fid+"?uploadType=media",{
+        method:"PATCH",
+        headers:{Authorization:"Bearer "+GDRIVE.token,"Content-Type":"application/json"},
+        body
+      });
+    }else{
+      // Création dans appDataFolder
+      const meta={name:GDRIVE.FILENAME,parents:["appDataFolder"]};
+      const form=new FormData();
+      form.append("metadata",new Blob([JSON.stringify(meta)],{type:"application/json"}));
+      form.append("file",new Blob([body],{type:"application/json"}));
+      resp=await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",{
+        method:"POST",
+        headers:{Authorization:"Bearer "+GDRIVE.token},
+        body:form
+      });
+      const created=await resp.json();
+      GDRIVE.fileId=created.id;
+    }
+    if(resp.ok)showToast("☁️ Sauvegarde Drive ✓");
+    else showToast("Erreur Drive ✗");
+  }catch(e){console.error("Drive save error",e);showToast("Erreur Drive ✗")}
+}
+
+// Connexion automatique silencieuse au démarrage (si déjà autorisé)
+async function gdriveAutoConnect(){
+  if(!localStorage.getItem("gdrive_enabled"))return;
+  try{
+    await loadGisScript();
+    return new Promise(resolve=>{
+      const client=google.accounts.oauth2.initTokenClient({
+        client_id:GDRIVE.CLIENT_ID,
+        scope:GDRIVE.SCOPES,
+        prompt:"",
+        callback:async resp=>{
+          if(resp.error){resolve(false);return}
+          GDRIVE.token=resp.access_token;
+          GDRIVE.enabled=true;
+          resolve(true);
+        }
+      });
+      client.requestAccessToken({prompt:""});
+    });
+  }catch{return false}
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // BLOC 3 — CALCULS STATS
 // ═══════════════════════════════════════════════════════════════════
@@ -446,12 +578,36 @@ function buildStatsBlock(st,container){
 // ═══════════════════════════════════════════════════════════════════
 let APP={history:[],pseudo:"",screen:"home",sessionParams:null,lastSession:null,resumable:false};
 
-function loadApp(){
+async function loadApp(){
   const d=loadData();APP.history=d.history||[];APP.pseudo=d.pseudo||"";
   APP.lastParams=loadParams()||{distance:"18 m",target:"WA 122cm",bowType:"Recurve",arrowCount:6,note:""};
   render();
+  // Connexion Drive silencieuse si déjà autorisé
+  const connected=await gdriveAutoConnect();
+  if(connected){
+    const driveData=await gdriveLoad();
+    if(driveData&&driveData.history){
+      // Fusionner : garder la version la plus récente par id de séance
+      const localIds=new Set(APP.history.map(s=>s.id));
+      const driveIds=new Set(driveData.history.map(s=>s.id));
+      // Sessions Drive absentes en local
+      const newFromDrive=driveData.history.filter(s=>!localIds.has(s.id));
+      if(newFromDrive.length>0){
+        APP.history=[...APP.history,...newFromDrive].sort((a,b)=>(a.id||0)-(b.id||0));
+        APP.pseudo=APP.pseudo||driveData.pseudo||"";
+        saveData({history:APP.history,pseudo:APP.pseudo});
+        render();
+        showToast("☁️ "+newFromDrive.length+" séance(s) restaurée(s) depuis Drive");
+      }
+    }
+  }
 }
-function persist(){saveData({history:APP.history,pseudo:APP.pseudo})}
+function persist(){
+  const d={history:APP.history,pseudo:APP.pseudo};
+  saveData(d);
+  // Sync Drive en arrière-plan (silencieux si non connecté)
+  if(GDRIVE.enabled&&GDRIVE.token)gdriveSave(d).catch(()=>{});
+}
 
 function navigate(screen,extra={}){
   APP.screen=screen;Object.assign(APP,extra);render();
@@ -591,9 +747,12 @@ function renderHome(root){
       <button class="btn-ghost" style="width:100%;text-align:center" id="btn-hist">${histOpen?"▲ Masquer l'historique":"▼ Historique ("+APP.history.length+" séance"+(APP.history.length>1?"s":"")+")"}</button>
     </div>
     <div id="hist-list"></div>
-    <div id="data-actions" style="margin-top:12px;display:flex;gap:8px">
-      <button class="btn-ghost" style="flex:1;font-size:11px" id="btn-export">⬇ Export JSON</button>
-      <label class="btn-ghost" style="flex:1;font-size:11px;text-align:center;cursor:pointer">⬆ Import JSON<input type="file" accept=".json" style="display:none" id="import-file"></label>
+    <div id="data-actions" style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;gap:8px">
+        <button class="btn-ghost" style="flex:1;font-size:11px" id="btn-export">⬇ Export JSON</button>
+        <label class="btn-ghost" style="flex:1;font-size:11px;text-align:center;cursor:pointer">⬆ Import JSON<input type="file" accept=".json" style="display:none" id="import-file"></label>
+      </div>
+      <div id="drive-btn-wrap"></div>
     </div>`;
     sec.querySelector("#btn-hist").onclick=()=>{histOpen=!histOpen;renderHistorySection(sec)};
     if(APP.history.length>=2)sec.querySelector("#btn-global").onclick=()=>navigate("global");
@@ -601,6 +760,29 @@ function renderHome(root){
     sec.querySelector("#import-file").onchange=e=>{
       if(e.target.files[0])importData(e.target.files[0],d=>{APP.history=d.history;APP.pseudo=d.pseudo||APP.pseudo;persist();render()})
     };
+    // Bouton Drive
+    const dw=sec.querySelector("#drive-btn-wrap");
+    if(dw){
+      if(GDRIVE.enabled){
+        dw.innerHTML=`<div style="display:flex;gap:8px;align-items:center">
+          <div style="flex:1;font-size:11px;color:#4ade80">☁️ Drive connecté — sync auto activée</div>
+          <button class="btn-ghost" style="font-size:11px;color:#ef4444;border-color:rgba(239,68,68,.2)" id="btn-drive-off">Déconnecter</button>
+        </div>`;
+        dw.querySelector("#btn-drive-off").onclick=()=>{gdriveDisconnect();renderHistorySection(sec)};
+      }else{
+        dw.innerHTML=`<button class="btn-ghost" style="width:100%;font-size:12px;color:#818cf8;border-color:rgba(129,140,248,.25)" id="btn-drive-on">☁️ Connecter Google Drive (sync auto)</button>`;
+        dw.querySelector("#btn-drive-on").onclick=async()=>{
+          try{
+            showToast("Connexion Google Drive…");
+            await gdriveConnect();
+            showToast("☁️ Drive connecté ✓");
+            // Sauvegarder immédiatement
+            await gdriveSave({history:APP.history,pseudo:APP.pseudo});
+            renderHistorySection(sec);
+          }catch(e){showToast("Connexion annulée ou refusée")}
+        };
+      }
+    }
     if(!histOpen)return;
     const list=sec.querySelector("#hist-list");
     list.innerHTML=[...APP.history].reverse().map((s,ri)=>{
