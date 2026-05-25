@@ -1,5 +1,5 @@
 // Service Worker — ArcheryLog PWA
-const CACHE="archerylog-v6";
+const CACHE="archerylog-v8";
 const ASSETS=["./archery-pwa.html","./archery-manifest.json","./archery-sw.js"];
 
 self.addEventListener("install",e=>{

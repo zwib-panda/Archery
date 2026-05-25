@@ -11,7 +11,8 @@
 <link rel="manifest" href="archery-manifest.json"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow-x:hidden;background:#07090f;color:#f8fafc;font-family:'DM Mono',monospace}
+html{overscroll-behavior-y:none;overscroll-behavior:none}
+html,body{height:100%;overflow-x:hidden;background:#07090f;color:#e2e8f0;font-family:'DM Mono',monospace;font-size:14px}
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;700&family=Figtree:wght@700;800;900&display=swap');
 [style*="font-family:'Figtree'"]{letter-spacing:-.3px;line-height:1.15}
 .btn-primary{letter-spacing:.2px;line-height:1.2}
@@ -30,16 +31,16 @@ input:focus{outline:none}
 .btn-primary{background:linear-gradient(135deg,#F97316,#DC5A08);color:#fff;border:none;border-radius:13px;font-family:'Figtree',sans-serif;font-weight:800;font-size:15px;cursor:pointer;transition:transform .12s,box-shadow .12s;box-shadow:0 4px 18px rgba(249,115,22,.38);padding:14px 0;width:100%}
 .btn-primary:active{transform:scale(.97)}
 .btn-primary:disabled{opacity:.3;pointer-events:none}
-.btn-ghost{background:rgba(255,255,255,.05);color:#94a3b8;border:1px solid rgba(255,255,255,.09);border-radius:11px;font-size:12px;font-weight:500;cursor:pointer;transition:background .15s,color .15s;padding:10px 14px}
+.btn-ghost{background:rgba(255,255,255,.05);color:#b0bec5;border:1px solid rgba(255,255,255,.12);border-radius:11px;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s,color .15s;padding:10px 14px}
 .btn-ghost:active{background:rgba(255,255,255,.12)}
 .btn-danger{background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.28);border-radius:11px;font-size:12px;font-weight:500;cursor:pointer;padding:10px 14px}
 .btn-danger:active{background:rgba(239,68,68,.22)}
 .btn-icon{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);border-radius:10px;color:#f8fafc;font-size:18px;cursor:pointer;width:38px;height:38px;display:flex;align-items:center;justify-content:center}
 /* Cards */
-.card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:14px 16px}
-.lbl{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:5px}
+.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 16px}
+.lbl{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:5px}
 /* Pill */
-.pill{padding:7px 13px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);color:#94a3b8;font-size:12px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.pill{padding:7px 13px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#b0bec5;font-size:13px;cursor:pointer;transition:all .15s;white-space:nowrap}
 .pill.active{background:#F97316;border:none;color:#fff;font-weight:700}
 /* Stepper */
 .stepper{display:flex;align-items:center;gap:10px}
@@ -50,7 +51,7 @@ input:focus{outline:none}
 .popup-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:flex-end;justify-content:center}
 .popup-box{background:#0f172a;border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:420px;border-top:1px solid rgba(255,255,255,.1)}
 /* Toast */
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px 20px;font-size:13px;color:#f8fafc;z-index:200;pointer-events:none;opacity:0;transition:opacity .3s}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:11px 22px;font-size:14px;color:#f1f5f9;z-index:200;pointer-events:none;opacity:0;transition:opacity .3s}
 .toast.show{opacity:1}
 </style>
 </head>
@@ -117,6 +118,15 @@ function saveData(data){
 }
 function saveParams(p){try{localStorage.setItem(STORAGE_KEY+'_params',JSON.stringify(p))}catch{}}
 function loadParams(){try{const d=localStorage.getItem(STORAGE_KEY+'_params');return d?JSON.parse(d):null}catch{return null}}
+function saveDraft(params,volleys,currentArrows){
+  try{localStorage.setItem('archerylog_session_draft',JSON.stringify({params,volleys,currentArrows,ts:Date.now()}))}catch{}
+}
+function loadDraft(){
+  try{const d=localStorage.getItem('archerylog_session_draft');return d?JSON.parse(d):null}catch{return null}
+}
+function clearDraft(){
+  try{localStorage.removeItem('archerylog_session_draft')}catch{}
+}
 function exportData(data){
   const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
   const url=URL.createObjectURL(blob);
@@ -148,6 +158,7 @@ const GDRIVE={
   token:null,
   fileId:null,
   enabled:false,
+  email:localStorage.getItem("gdrive_email")||"",
 };
 
 // Charger le SDK Google Identity Services
@@ -168,11 +179,18 @@ async function gdriveConnect(){
       const client=google.accounts.oauth2.initTokenClient({
         client_id:GDRIVE.CLIENT_ID,
         scope:GDRIVE.SCOPES,
-        callback:resp=>{
+        callback:async resp=>{
           if(resp.error){reject(resp.error);return}
           GDRIVE.token=resp.access_token;
           GDRIVE.enabled=true;
           localStorage.setItem("gdrive_enabled","1");
+          try{
+            const ui=await fetch("https://www.googleapis.com/oauth2/v3/userinfo",
+              {headers:{Authorization:"Bearer "+resp.access_token}});
+            const ud=await ui.json();
+            GDRIVE.email=ud.email||"";
+            localStorage.setItem("gdrive_email",GDRIVE.email);
+          }catch{}
           resolve(resp.access_token);
         }
       });
@@ -184,8 +202,9 @@ async function gdriveConnect(){
 // Déconnecter
 function gdriveDisconnect(){
   if(GDRIVE.token)google?.accounts?.oauth2?.revoke(GDRIVE.token,()=>{});
-  GDRIVE.token=null;GDRIVE.fileId=null;GDRIVE.enabled=false;
+  GDRIVE.token=null;GDRIVE.fileId=null;GDRIVE.enabled=false;GDRIVE.email="";
   localStorage.removeItem("gdrive_enabled");
+  localStorage.removeItem("gdrive_email");
   showToast("Google Drive déconnecté");
 }
 
@@ -249,22 +268,28 @@ async function gdriveSave(data){
 
 // Connexion automatique silencieuse au démarrage (si déjà autorisé)
 async function gdriveAutoConnect(){
-  if(!localStorage.getItem("gdrive_enabled"))return;
+  if(!localStorage.getItem("gdrive_enabled"))return false;
   try{
     await loadGisScript();
     return new Promise(resolve=>{
+      // prompt:"none" = silencieux, pas de popup
+      // Si l'user est connecté à Google sur le navigateur → token immédiat
+      // Si session Google expirée → error="interaction_required" → on attend action manuelle
       const client=google.accounts.oauth2.initTokenClient({
         client_id:GDRIVE.CLIENT_ID,
         scope:GDRIVE.SCOPES,
-        prompt:"",
+        prompt:"none",
         callback:async resp=>{
-          if(resp.error){resolve(false);return}
+          if(resp.error){
+            // Session Google expirée : on garde gdrive_enabled pour proposer le bouton
+            resolve(false);return;
+          }
           GDRIVE.token=resp.access_token;
           GDRIVE.enabled=true;
           resolve(true);
         }
       });
-      client.requestAccessToken({prompt:""});
+      client.requestAccessToken({prompt:"none"});
     });
   }catch{return false}
 }
@@ -641,7 +666,8 @@ function renderHome(root){
   <div id="params-panel" style="display:none;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px 16px;margin-top:10px">
     <div id="params-inner"></div>
   </div>
-  <div id="history-section" style="margin-top:16px"></div>`;
+  <div id="data-menu" style="margin-top:16px"></div>
+  <div id="history-section" style="margin-top:8px"></div>`;
 
   root.appendChild(el);
   // CSS global
@@ -738,51 +764,81 @@ function renderHome(root){
     APP.lastParams={...params};saveParams({...params});navigate("session",{sessionParams:{...params,_key:Date.now()}});
   };
 
+  // Menu données (toujours visible)
+  renderDataMenu(el.querySelector("#data-menu"),el.querySelector("#history-section"));
   // Historique
   renderHistorySection(el.querySelector("#history-section"));
-  function renderHistorySection(sec){
-    if(!APP.history.length){sec.innerHTML="";return}
-    sec.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
-      ${APP.history.length>=2?`<button class="btn-ghost" style="width:100%;color:#818cf8;border-color:rgba(129,140,248,.2);text-align:center" id="btn-global">📊 Statistiques globales</button>`:""}
-      <button class="btn-ghost" style="width:100%;text-align:center" id="btn-hist">${histOpen?"▲ Masquer l'historique":"▼ Historique ("+APP.history.length+" séance"+(APP.history.length>1?"s":"")+")"}</button>
-    </div>
-    <div id="hist-list"></div>
-    <div id="data-actions" style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
-      <div style="display:flex;gap:8px">
-        <button class="btn-ghost" style="flex:1;font-size:11px" id="btn-export">⬇ Export JSON</button>
-        <label class="btn-ghost" style="flex:1;font-size:11px;text-align:center;cursor:pointer">⬆ Import JSON<input type="file" accept=".json" style="display:none" id="import-file"></label>
-      </div>
-      <div id="drive-btn-wrap"></div>
-    </div>`;
-    sec.querySelector("#btn-hist").onclick=()=>{histOpen=!histOpen;renderHistorySection(sec)};
-    if(APP.history.length>=2)sec.querySelector("#btn-global").onclick=()=>navigate("global");
-    sec.querySelector("#btn-export").onclick=()=>exportData({history:APP.history,pseudo:APP.pseudo});
-    sec.querySelector("#import-file").onchange=e=>{
-      if(e.target.files[0])importData(e.target.files[0],d=>{APP.history=d.history;APP.pseudo=d.pseudo||APP.pseudo;persist();render()})
-    };
-    // Bouton Drive
-    const dw=sec.querySelector("#drive-btn-wrap");
-    if(dw){
-      if(GDRIVE.enabled){
-        dw.innerHTML=`<div style="display:flex;gap:8px;align-items:center">
-          <div style="flex:1;font-size:11px;color:#4ade80">☁️ Drive connecté — sync auto activée</div>
-          <button class="btn-ghost" style="font-size:11px;color:#ef4444;border-color:rgba(239,68,68,.2)" id="btn-drive-off">Déconnecter</button>
+  function renderDataMenu(wrap, histSec){
+    let menuOpen=false;
+    function buildMenu(){
+      const connected=GDRIVE.enabled;
+      const email=GDRIVE.email;
+      wrap.innerHTML=`
+        <button class="btn-ghost" id="btn-data-toggle" style="width:100%;text-align:center;font-size:12px">
+          ${connected?"☁️ Drive connecté · ":"💾 "}Données &amp; Synchronisation ${menuOpen?"▲":"▼"}
+        </button>
+        <div id="data-panel" style="display:${menuOpen?"block":"none"};background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:14px 14px 10px;margin-top:8px">
+          <!-- Statut Drive -->
+          ${connected?`
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:10px">
+              <div style="flex:1">
+                <div style="font-size:11px;color:#4ade80;font-weight:600">☁️ Google Drive connecté</div>
+                ${email?`<div style="font-size:10px;color:#475569;margin-top:2px">${email}</div>`:""}
+                <div style="font-size:10px;color:#475569;margin-top:1px">Sync automatique activée</div>
+              </div>
+              <button class="btn-ghost" id="btn-drive-off" style="font-size:11px;color:#ef4444;border-color:rgba(239,68,68,.2);padding:7px 11px;flex-shrink:0">Déconnecter</button>
+            </div>
+          `:`
+            <button class="btn-ghost" id="btn-drive-on" style="width:100%;font-size:12px;color:#818cf8;border-color:rgba(129,140,248,.25);margin-bottom:10px">
+              ☁️ Connecter Google Drive (sync auto)
+            </button>
+          `}
+          <!-- Export / Import -->
+          <div style="display:flex;gap:8px">
+            <button class="btn-ghost" id="btn-export" style="flex:1;font-size:11px">⬇ Export JSON</button>
+            <label class="btn-ghost" style="flex:1;font-size:11px;text-align:center;cursor:pointer">
+              ⬆ Import JSON
+              <input type="file" accept=".json" style="display:none" id="import-file">
+            </label>
+          </div>
         </div>`;
-        dw.querySelector("#btn-drive-off").onclick=()=>{gdriveDisconnect();renderHistorySection(sec)};
+      wrap.querySelector("#btn-data-toggle").onclick=()=>{menuOpen=!menuOpen;buildMenu()};
+      if(connected){
+        wrap.querySelector("#btn-drive-off").onclick=()=>{
+          gdriveDisconnect();buildMenu();
+        };
       }else{
-        dw.innerHTML=`<button class="btn-ghost" style="width:100%;font-size:12px;color:#818cf8;border-color:rgba(129,140,248,.25)" id="btn-drive-on">☁️ Connecter Google Drive (sync auto)</button>`;
-        dw.querySelector("#btn-drive-on").onclick=async()=>{
+        wrap.querySelector("#btn-drive-on").onclick=async()=>{
           try{
             showToast("Connexion Google Drive…");
             await gdriveConnect();
             showToast("☁️ Drive connecté ✓");
-            // Sauvegarder immédiatement
             await gdriveSave({history:APP.history,pseudo:APP.pseudo});
-            renderHistorySection(sec);
-          }catch(e){showToast("Connexion annulée ou refusée")}
+            buildMenu();
+          }catch{showToast("Connexion annulée ou refusée")}
         };
       }
+      wrap.querySelector("#btn-export").onclick=()=>exportData({history:APP.history,pseudo:APP.pseudo});
+      wrap.querySelector("#import-file").onchange=e=>{
+        if(e.target.files[0])importData(e.target.files[0],d=>{
+          APP.history=d.history;APP.pseudo=d.pseudo||APP.pseudo;persist();render();
+        });
+      };
     }
+    buildMenu();
+  }
+
+  function renderHistorySection(sec){
+    if(!APP.history.length){sec.innerHTML="";return}
+    sec.innerHTML="";
+    if(!APP.history.length)return;
+    sec.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
+      ${APP.history.length>=2?`<button class="btn-ghost" style="width:100%;color:#818cf8;border-color:rgba(129,140,248,.2);text-align:center" id="btn-global">📊 Statistiques globales</button>`:""}
+      <button class="btn-ghost" style="width:100%;text-align:center" id="btn-hist">${histOpen?"▲ Masquer l'historique":"▼ Historique ("+APP.history.length+" séance"+(APP.history.length>1?"s":"")+")"}</button>
+    </div>
+    <div id="hist-list"></div>`;
+    sec.querySelector("#btn-hist").onclick=()=>{histOpen=!histOpen;renderHistorySection(sec)};
+    if(APP.history.length>=2)sec.querySelector("#btn-global").onclick=()=>navigate("global");
     if(!histOpen)return;
     const list=sec.querySelector("#hist-list");
     list.innerHTML=[...APP.history].reverse().map((s,ri)=>{
@@ -1007,24 +1063,30 @@ function renderSession(root){
   const isTrispot=params.target==="Trispot";
   const SIZE=Math.min(window.innerWidth-56,300);
   const R_SVG=SIZE/2-2;
-  // Restaurer les volleys si on reprend une séance
+  // Restaurer draft ou volleys reprises
   const initVolleys=APP.resumeVolleys||[];
-  APP.resumeVolleys=null; // consommer
-  let volleys=[...initVolleys],currentArrows=[],selectedIdx=null;
-  let volleyNum=initVolleys.length>0?Math.max(...initVolleys.map(v=>v.num))+1:1;
+  APP.resumeVolleys=null;
+  // Vérifier si un draft existe pour ces paramètres
+  const draft=!initVolleys.length?loadDraft():null;
+  const useDraft=draft&&draft.params&&draft.params.target===params.target&&draft.params.distance===params.distance;
+  if(useDraft)showToast("📋 Séance en cours restaurée ("+draft.volleys.length+" volées)");
+  let volleys=useDraft?draft.volleys:[...initVolleys];
+  let currentArrows=useDraft?draft.currentArrows:[];
+  let selectedIdx=null;
+  let volleyNum=volleys.length>0?Math.max(...volleys.map(v=>v.num))+1:1;
   let maxArrows=params.arrowCount,editingVolley=null;
   const el=document.createElement("div");el.className="page fade-up";
   el.style.paddingBottom="60px";
   el.innerHTML=`
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:14px 0 8px">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 0 16px;min-height:88px">
       <div>
-        <div style="font-family:'Figtree',sans-serif;font-size:18px;font-weight:900" id="volley-title">🏹 Volée <span style="color:#F97316">#1</span></div>
-        <div style="font-size:10px;color:#475569;margin-top:1px">${params.distance} · ${params.target} · ${params.bowType}</div>
+        <div style="font-family:'Figtree',sans-serif;font-size:20px;font-weight:900" id="volley-title">🏹 Volée <span style="color:#F97316">#1</span></div>
+        <div style="font-size:11px;color:#64748b;margin-top:3px">${params.distance} · ${params.target} · ${params.bowType}</div>
+        <div id="avg-display" style="font-size:11px;color:#475569;margin-top:2px">— /fl</div>
       </div>
       <div style="text-align:right">
-        <div style="font-size:9px;color:#334155;text-transform:uppercase;letter-spacing:1px">Total</div>
-        <div id="total-score" style="font-family:'Figtree',sans-serif;font-size:22px;font-weight:900;color:#F5C400;line-height:1.1">0</div>
-        <div id="avg-display" style="font-size:9px;color:#475569">—/fl</div>
+        <div style="font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:1px">Total</div>
+        <div id="total-score" style="font-family:'Figtree',sans-serif;font-size:30px;font-weight:900;color:#F5C400;line-height:1">0</div>
       </div>
     </div>
     <div id="progress-bar" style="display:flex;gap:5px;align-items:center;margin-bottom:10px"></div>
@@ -1044,7 +1106,7 @@ function renderSession(root){
 
   // Magnifier
   const magDiv=document.createElement("div");
-  magDiv.style.cssText="position:absolute;top:-160px;left:50%;transform:translateX(-50%);pointer-events:none;z-index:30;display:none;flex-direction:column;align-items:center";
+  magDiv.style.cssText="position:absolute;top:-175px;left:50%;transform:translateX(-50%);pointer-events:none;z-index:30;display:none;flex-direction:column;align-items:center";
   const MAG_W=169,MAG_H=150,WINDOW=R*0.232; // +30% W, +15% H, +10% zoom
   magDiv.innerHTML=`<div style="background:#0a0f1c;border-radius:18px;padding:5px;box-shadow:0 12px 40px rgba(0,0,0,.7);border:2px solid rgba(255,255,255,.13)">
     <svg id="mag-svg" width="${MAG_W}" height="${MAG_H}" style="display:block;border-radius:13px;overflow:hidden"></svg>
@@ -1141,6 +1203,7 @@ function renderSession(root){
     const score=getScore(nx,ny,rings);
     if(selectedIdx!==null){currentArrows[selectedIdx]={nx,ny,score};selectedIdx=null}
     else{currentArrows.push({nx,ny,score})}
+    saveDraft(params,volleys,currentArrows);  // sauvegarder après chaque flèche
     updateUI();
   }
   svg.addEventListener("pointerdown",onDown);
@@ -1155,7 +1218,8 @@ function renderSession(root){
     // score
     el.querySelector("#total-score").textContent=totalValidated()+currentScore();
     const n=allArrowsCount();
-    el.querySelector("#avg-display").textContent=n>0?((totalValidated()+currentScore())/n).toFixed(1)+"/fl":"—/fl";
+    const avgEl=el.querySelector("#avg-display");
+    if(avgEl)avgEl.textContent=n>0?((totalValidated()+currentScore())/n).toFixed(1)+" /fl":"— /fl";
     // title
     el.querySelector("#volley-title").innerHTML=editingVolley!==null
       ?`🏹 Édition <span style="color:#F97316">#${volleys[editingVolley]?.num}</span>`
@@ -1257,7 +1321,9 @@ function renderSession(root){
     const volley={arrows:[...currentArrows],score,num:editingVolley!==null?volleys[editingVolley].num:volleyNum,expectedSize:maxArrows};
     if(editingVolley!==null){volleys[editingVolley]=volley;editingVolley=null}
     else{volleys.push(volley);volleyNum++}
-    currentArrows=[];selectedIdx=null;maxArrows=params.arrowCount;updateUI();
+    currentArrows=[];selectedIdx=null;maxArrows=params.arrowCount;
+    saveDraft(params,volleys,[]);  // sauvegarder après chaque volée validée
+    updateUI();
   }
 
   function endSession(fromResume){
@@ -1281,6 +1347,7 @@ function renderSession(root){
       params,volleys:[...volleys],totalArrows:totalArr,totalScore:totalSc,avgPerArrow:avgPA,avgDistCm:avgDist
     };
     APP.history.push(sessionData);persist();
+    clearDraft();  // séance terminée → supprimer le draft
     APP.lastSession=sessionData;
     APP.resumable=true;
     navigate("summary",{summarySession:sessionData,summaryVolleys:volleys,summaryParams:params});
@@ -1335,7 +1402,7 @@ body{-webkit-font-smoothing:antialiased}
 // ═══════════════════════════════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════════════════════════════
-loadApp();
+(async()=>{ await loadApp(); })();
 </script>
 
 <script>
