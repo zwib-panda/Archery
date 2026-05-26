@@ -1107,7 +1107,7 @@ function renderSession(root){
   // Magnifier
   const magDiv=document.createElement("div");
   magDiv.style.cssText="position:absolute;top:-175px;left:50%;transform:translateX(-50%);pointer-events:none;z-index:30;display:none;flex-direction:column;align-items:center";
-  const MAG_W=169,MAG_H=150,WINDOW=R*0.232; // +30% W, +15% H, +10% zoom
+  const MAG_W=200,MAG_H=160,WINDOW=R*0.25; // 
   magDiv.innerHTML=`<div style="background:#0a0f1c;border-radius:18px;padding:5px;box-shadow:0 12px 40px rgba(0,0,0,.7);border:2px solid rgba(255,255,255,.13)">
     <svg id="mag-svg" width="${MAG_W}" height="${MAG_H}" style="display:block;border-radius:13px;overflow:hidden"></svg>
     <div id="mag-label" style="text-align:center;font-size:12px;font-weight:700;padding:5px 4px 3px;letter-spacing:.5px"></div>
