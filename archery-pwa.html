@@ -1078,7 +1078,7 @@ function renderSession(root){
   const el=document.createElement("div");el.className="page fade-up";
   el.style.paddingBottom="60px";
   el.innerHTML=`
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 0 16px;min-height:88px">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 0 20px;min-height:88px">
       <div>
         <div style="font-family:'Figtree',sans-serif;font-size:20px;font-weight:900" id="volley-title">🏹 Volée <span style="color:#F97316">#1</span></div>
         <div style="font-size:11px;color:#64748b;margin-top:3px">${params.distance} · ${params.target} · ${params.bowType}</div>
@@ -1089,7 +1089,7 @@ function renderSession(root){
         <div id="total-score" style="font-family:'Figtree',sans-serif;font-size:30px;font-weight:900;color:#F5C400;line-height:1">0</div>
       </div>
     </div>
-    <div id="progress-bar" style="display:flex;gap:5px;align-items:center;margin-bottom:10px"></div>
+    <div id="progress-bar" style="display:flex;gap:5px;align-items:center;margin-bottom:65px"></div>
     <div class="target-wrap" style="display:flex;justify-content:center;padding:0 6px;position:relative" id="target-wrap"></div>
     <div id="hint" style="text-align:center;font-size:10px;color:#334155;margin-top:8px">Touchez le blason pour placer une flèche</div>
     <div id="scores-row" style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;padding:10px 0 0"></div>
